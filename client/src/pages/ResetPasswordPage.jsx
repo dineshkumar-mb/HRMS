@@ -28,7 +28,7 @@ const ResetPasswordPage = () => {
         setError('');
 
         try {
-            const response = await fetch(`http://localhost:5000/api/auth/reset-password/${token}`, {
+            const response = await fetch(`https://hrms-22ch.onrender.com/api/auth/reset-password/${token}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

@@ -46,7 +46,7 @@ client/
 2.  **Environment Configuration:**
     Create a `.env` file in the root directory (if not present, though Vite uses `.env.local` primarily):
     ```env
-    VITE_API_URL=http://localhost:5000/api
+    VITE_API_URL=https://hrms-22ch.onrender.com/api
     ```
 
 3.  **Run the Application:**

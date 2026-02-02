@@ -2,7 +2,7 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: '.env' });
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://hrms-22ch.onrender.com/api';
 const SECRET = process.env.JWT_SECRET || 'secret';
 
 // Use matches from test_api.js if possible, or dummy admin
