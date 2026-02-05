@@ -117,7 +117,7 @@ const DashboardLayout = () => {
                 <div className="h-16 flex items-center px-6 bg-[#5bc0de] text-white">
                     <div className="flex items-center gap-3">
                         <LayoutDashboard size={20} />
-                        {isSidebarOpen && <span className="text-lg font-bold">Dashboard</span>}
+                        {isSidebarOpen && <span className="text-lg font-bold italic tracking-wider">HRMS PORTAL</span>}
                     </div>
                 </div>
 
@@ -160,7 +160,9 @@ const DashboardLayout = () => {
                 {/* Topbar */}
                 <header className="h-16 bg-[#5bc0de] flex items-center justify-between px-6 z-20 text-white">
                     <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-medium">Dashboard</h2>
+                        <h2 className="text-xl font-bold tracking-tight">
+                            {filteredNavItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
+                        </h2>
                     </div>
 
                     <div className="flex items-center gap-4">
