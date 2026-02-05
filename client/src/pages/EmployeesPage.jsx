@@ -87,6 +87,13 @@ const EmployeesPage = () => {
         setValue('phoneNumber', employee.phoneNumber || '');
         setValue('address', employee.address || '');
         setValue('reportingManager', employee.reportingManager?._id || '');
+
+        // Salary fields
+        setValue('salary.basic', employee.salary?.basic || 0);
+        setValue('salary.hra', employee.salary?.hra || 0);
+        setValue('salary.allowances', employee.salary?.allowances || 0);
+        setValue('salary.deductions', employee.salary?.deductions || 0);
+
         setShowModal(true);
     };
 
@@ -559,6 +566,48 @@ const EmployeesPage = () => {
                                     <option value="inactive">Inactive</option>
                                     <option value="terminated">Terminated</option>
                                 </select>
+                            </div>
+
+                            <div className="pt-4 border-t border-gray-100">
+                                <h4 className="text-sm font-bold text-gray-900 mb-4">Salary Details (Monthly)</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Basic Salary</label>
+                                        <input
+                                            type="number"
+                                            {...register('salary.basic', { required: true })}
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                                            placeholder="50000"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">HRA</label>
+                                        <input
+                                            type="number"
+                                            {...register('salary.hra')}
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                                            placeholder="20000"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Allowances</label>
+                                        <input
+                                            type="number"
+                                            {...register('salary.allowances')}
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                                            placeholder="10000"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Deductions</label>
+                                        <input
+                                            type="number"
+                                            {...register('salary.deductions')}
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                                            placeholder="5000"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="flex gap-3 pt-4 border-t border-gray-100">
