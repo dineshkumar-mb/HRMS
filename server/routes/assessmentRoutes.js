@@ -121,29 +121,31 @@ router.post('/', protect, async (req, res) => {
     try {
         const { employeeId, period, status, selfRating, selfComments, managerRating, managerComments } = req.body;
 
-        // Determine employee ID (if admin/hr is setting it, or use logged in user's employee ID)
-        let targetEmployeeId = employeeId;
-        if (!targetEmployeeId && req.user.role === 'employee') {
-            const employee = await Employee.findOne({ email: req.user.email });
-            if (employee) targetEmployeeId = employee._id;
-        }
-
-        if (!targetEmployeeId) {
+        if (!employeeId) {
             return res.status(400).json({ success: false, message: 'Employee ID required' });
         }
 
+        // Use current period if not provided
+        let targetPeriod = period;
+        if (!targetPeriod) {
+            const date = new Date();
+            const quarter = Math.floor((date.getMonth() + 3) / 3);
+            targetPeriod = `Q${quarter} ${date.getFullYear()}`;
+        }
+
         let assessment = await Assessment.findOne({
-            employee: targetEmployeeId,
-            period: period || { $exists: true } // Simplified for now, usually fixed period
+            employee: employeeId,
+            period: targetPeriod
         });
 
         if (assessment) {
             // Update
-            assessment.status = status || assessment.status;
-            assessment.selfRating = selfRating || assessment.selfRating;
-            assessment.selfComments = selfComments || assessment.selfComments;
-            assessment.managerRating = managerRating || assessment.managerRating;
-            assessment.managerComments = managerComments || assessment.managerComments;
+            if (status) assessment.status = status;
+            if (selfRating !== undefined) assessment.selfRating = selfRating;
+            if (selfComments !== undefined) assessment.selfComments = selfComments;
+            if (managerRating !== undefined) assessment.managerRating = managerRating;
+            if (managerComments !== undefined) assessment.managerComments = managerComments;
+
             if (status === 'Submitted') assessment.submittedAt = Date.now();
             if (status === 'Reviewed') assessment.reviewedAt = Date.now();
 
@@ -151,8 +153,8 @@ router.post('/', protect, async (req, res) => {
         } else {
             // Create
             assessment = await Assessment.create({
-                employee: targetEmployeeId,
-                period,
+                employee: employeeId,
+                period: targetPeriod,
                 status: status || 'Pending',
                 selfRating,
                 selfComments,
@@ -168,8 +170,20 @@ router.post('/', protect, async (req, res) => {
 
     } catch (error) {
         console.error('Error saving assessment:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
+});
+
+// @desc    Update Assessment by ID (Alternative to POST)
+// @route   PUT /api/assessments/:id
+router.put('/:id', protect, async (req, res) => {
+    // If it's a temp ID, we treat it as a create (POST)
+    if (req.params.id.startsWith('temp_')) {
+        req.body.employeeId = req.params.id.split('_')[1];
+        return router.handle(req, res); // Redirect to router level if possible or just call logic
+    }
+    // Simplified: Just use the POST logic which handles both
+    return router.handle(req, res);
 });
 
 module.exports = router;

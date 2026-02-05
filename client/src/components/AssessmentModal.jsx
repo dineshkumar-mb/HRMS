@@ -5,7 +5,7 @@ import useAuthStore from '../store/useAuthStore';
 
 const AssessmentModal = ({ isOpen, onClose, assessmentId, onSaveSuccess }) => {
     const { user } = useAuthStore();
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [data, setData] = useState(null);
     const [formData, setFormData] = useState({
