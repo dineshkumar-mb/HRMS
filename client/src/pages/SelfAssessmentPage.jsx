@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
+import AssessmentModal from '../components/AssessmentModal';
 
 const SelfAssessmentPage = () => {
     const { user } = useAuthStore();
@@ -18,6 +19,8 @@ const SelfAssessmentPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedAssessmentId, setSelectedAssessmentId] = useState(null);
 
     useEffect(() => {
         fetchAssessments();
@@ -35,7 +38,8 @@ const SelfAssessmentPage = () => {
     };
 
     const handleAction = (assessmentId) => {
-        alert('View/Edit Assessment feature coming soon!');
+        setSelectedAssessmentId(assessmentId);
+        setIsModalOpen(true);
     };
 
     // Filter logic
@@ -201,6 +205,16 @@ const SelfAssessmentPage = () => {
                     </div>
                 </div>
             </div>
+
+            <AssessmentModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                assessmentId={selectedAssessmentId}
+                onSaveSuccess={() => {
+                    fetchAssessments();
+                    // Optional: show a toast notification here
+                }}
+            />
         </div>
     );
 };

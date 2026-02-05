@@ -4,6 +4,48 @@ const Assessment = require('../models/Assessment');
 const Employee = require('../models/Employee');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
+// @desc    Get single assessment
+// @route   GET /api/assessments/:id
+// @access  Private
+router.get('/:id', protect, async (req, res) => {
+    try {
+        let assessment;
+
+        if (req.params.id.startsWith('temp_')) {
+            const employeeId = req.params.id.split('_')[1];
+            const employee = await Employee.findById(employeeId).select('firstName lastName department designation employeeId');
+            if (!employee) return res.status(404).json({ success: false, message: 'Employee not found' });
+
+            const date = new Date();
+            const quarter = Math.floor((date.getMonth() + 3) / 3);
+            const currentPeriod = `Q${quarter} ${date.getFullYear()}`;
+
+            assessment = {
+                _id: req.params.id,
+                employee,
+                period: currentPeriod,
+                status: 'Pending',
+                isPlaceholder: true
+            };
+        } else {
+            assessment = await Assessment.findById(req.params.id)
+                .populate('employee', 'firstName lastName department designation employeeId');
+        }
+
+        if (!assessment) {
+            return res.status(404).json({ success: false, message: 'Assessment not found' });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: assessment
+        });
+    } catch (error) {
+        console.error('Error fetching assessment:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 // @desc    Get all assessments (or generate placeholders)
 // @route   GET /api/assessments
 // @access  Private (Admin/HR/Manager can view all, Employee can view own)
