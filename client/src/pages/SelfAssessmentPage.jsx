@@ -104,15 +104,15 @@ const SelfAssessmentPage = () => {
                 {/* Table */}
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-200 text-gray-700 text-xs font-bold uppercase">
+                        <thead className="bg-[#e9ecef] text-gray-700 text-xs font-bold">
                             <tr>
-                                <th className="px-4 py-3 border-b border-gray-300">Emp Name</th>
-                                <th className="px-4 py-3 border-b border-gray-300">Joining Date</th>
-                                <th className="px-4 py-3 border-b border-gray-300">Designation</th>
-                                <th className="px-4 py-3 border-b border-gray-300">Department</th>
-                                <th className="px-4 py-3 border-b border-gray-300">Reporting manager</th>
-                                <th className="px-4 py-3 border-b border-gray-300">Status</th>
-                                <th className="px-4 py-3 border-b border-gray-300 text-center">Action</th>
+                                <th className="px-4 py-3 border-b border-gray-300">EMP NAME</th>
+                                <th className="px-4 py-3 border-b border-gray-300">JOINING DATE</th>
+                                <th className="px-4 py-3 border-b border-gray-300">DESIGNATION</th>
+                                <th className="px-4 py-3 border-b border-gray-300">DEPARTMENT</th>
+                                <th className="px-4 py-3 border-b border-gray-300">REPORTING MANAGER</th>
+                                <th className="px-4 py-3 border-b border-gray-300">STATUS</th>
+                                <th className="px-4 py-3 border-b border-gray-300 text-center">ACTION</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm text-gray-600">
@@ -149,9 +149,9 @@ const SelfAssessmentPage = () => {
                                             <td className="px-4 py-3">{managerName}</td>
                                             <td className="px-4 py-3">
                                                 <span className={`px-2 py-0.5 rounded text-xs font-bold ${item.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                        item.status === 'Reviewing' ? 'bg-blue-100 text-blue-700' :
-                                                            item.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                                                'bg-gray-100 text-gray-700'
+                                                    item.status === 'Reviewing' ? 'bg-blue-100 text-blue-700' :
+                                                        item.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                                            'bg-gray-100 text-gray-700'
                                                     }`}>
                                                     {item.status}
                                                 </span>

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Assessment = require('../models/Assessment');
 const Employee = require('../models/Employee');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize } = require('../middlewares/authMiddleware');
 
 // @desc    Get all assessments (or generate placeholders)
 // @route   GET /api/assessments
@@ -25,8 +25,10 @@ router.get('/', protect, async (req, res) => {
         // This is simplified for the list view
 
         if (req.user.role === 'admin' || req.user.role === 'hr') {
-            // Fetch all employees first
-            const employees = await Employee.find({ status: 'active' }).select('firstName lastName department designation reportingManager status employeeId');
+            // Fetch all employees first and populate reporting manager
+            const employees = await Employee.find({ status: 'active' })
+                .select('firstName lastName department designation reportingManager status employeeId dateOfJoining')
+                .populate('reportingManager', 'firstName lastName');
 
             // Fetch assessments for the current period (e.g., current quarter)
             const date = new Date();

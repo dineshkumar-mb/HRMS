@@ -34,6 +34,7 @@ const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [expandedMenus, setExpandedMenus] = useState({});
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
     const location = useLocation();
@@ -94,7 +95,14 @@ const DashboardLayout = () => {
         { name: 'Attendance Management', icon: CalendarCheck, path: '/attendance-management', subItems: true },
         { name: 'Attendance Requests', icon: CalendarClock, path: '/attendance-management/manage-requests', roles: ['admin', 'hr'] },
         { name: 'Leave Management', icon: CalendarDays, path: '/leaves', subItems: true },
-        { name: 'Assessment Management', icon: BarChart3, path: '/assessments', subItems: true },
+        {
+            name: 'Assessment Management',
+            icon: BarChart3,
+            path: '/assessments',
+            subItems: [
+                { name: 'Self-Assessment', path: '/assessments' }
+            ]
+        },
         { name: 'Salary Slip', icon: Wallet, path: '/payroll', subItems: true },
         { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin', 'hr'] },
         { name: 'Profile', icon: UserIcon, path: '/profile' },
@@ -123,22 +131,54 @@ const DashboardLayout = () => {
 
                 <nav className="flex-1 px-0 py-0 space-y-0 overflow-y-auto bg-[#777777]">
                     {filteredNavItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={cn(
-                                "flex items-center justify-between px-4 py-3 transition-all border-b border-[#888888] text-white hover:bg-[#666666]",
-                                location.pathname === item.path
-                                    ? "bg-[#5bc0de]"
-                                    : ""
-                            )}
-                        >
-                            <div className="flex items-center gap-3">
-                                <item.icon size={18} />
-                                {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
+                        <div key={item.path}>
+                            <div
+                                onClick={() => {
+                                    if (item.subItems && Array.isArray(item.subItems)) {
+                                        setExpandedMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }));
+                                    } else {
+                                        navigate(item.path);
+                                    }
+                                }}
+                                className={cn(
+                                    "flex items-center justify-between px-4 py-3 transition-all border-b border-[#888888] text-white hover:bg-[#666666] cursor-pointer",
+                                    location.pathname === item.path && !Array.isArray(item.subItems)
+                                        ? "bg-[#5bc0de]"
+                                        : ""
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <item.icon size={18} />
+                                    {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
+                                </div>
+                                {isSidebarOpen && item.subItems && (
+                                    <span className={cn(
+                                        "text-[10px] transition-transform duration-200",
+                                        expandedMenus[item.name] ? "rotate-90" : ""
+                                    )}>❮</span>
+                                )}
                             </div>
-                            {isSidebarOpen && item.subItems && <span className="text-[10px]">❮</span>}
-                        </Link>
+                            {isSidebarOpen && item.subItems && Array.isArray(item.subItems) && expandedMenus[item.name] && (
+                                <div className="bg-[#555555]">
+                                    {item.subItems.map((sub) => (
+                                        <Link
+                                            key={sub.path}
+                                            to={sub.path}
+                                            className={cn(
+                                                "flex items-center gap-3 pl-12 py-2 text-xs text-gray-300 hover:text-white hover:bg-[#444444] transition-all",
+                                                location.pathname === sub.path ? "text-[#5bc0de] font-bold" : ""
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-1.5 h-1.5 rounded-full border border-current",
+                                                location.pathname === sub.path ? "bg-[#5bc0de]" : ""
+                                            )} />
+                                            {sub.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     ))}
                 </nav>
 
