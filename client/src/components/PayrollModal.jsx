@@ -30,29 +30,46 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
         try {
             setDownloading(true);
             const element = slipRef.current;
+
+            // Configuration for html2canvas
             const canvas = await html2canvas(element, {
                 scale: 2,
                 useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
+                logging: true, // Enable for better debugging in console if it fails again
+                backgroundColor: '#ffffff',
+                onclone: (clonedDoc) => {
+                    // Remove scroll constraints in the clone so we capture everything
+                    const scrollableDiv = clonedDoc.querySelector('.overflow-y-auto');
+                    if (scrollableDiv) {
+                        scrollableDiv.style.maxHeight = 'none';
+                        scrollableDiv.style.overflow = 'visible';
+                    }
+
+                    // Specific fix for potential image/content loading
+                    const images = clonedDoc.getElementsByTagName('img');
+                    for (let i = 0; i < images.length; i++) {
+                        images[i].crossOrigin = 'anonymous';
+                    }
+                }
             });
 
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.95); // JPEG is sometimes more stable than PNG
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: 'a4'
+                format: 'a4',
+                compress: true
             });
 
-            const imgProps = pdf.getImageProperties(imgData);
             const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
             pdf.save(`Payslip_${months[month - 1]}_${year}.pdf`);
         } catch (error) {
-            console.error('PDF Generation Error:', error);
-            alert('Failed to generate PDF. Please try again.');
+            console.error('Detailed PDF Generation Error:', error);
+            // Alert more details to the user if possible
+            alert(`Failed to generate PDF: ${error.message || 'Unknown error'}. Please try again.`);
         } finally {
             setDownloading(false);
         }
