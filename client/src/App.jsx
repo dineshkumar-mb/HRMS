@@ -15,6 +15,7 @@ import AttendanceReportGrid from './pages/AttendanceReportGrid';
 import MyAttendanceLog from './pages/MyAttendanceLog';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import RegularizationManagement from './pages/RegularizationManagement';
+import SelfAssessmentPage from './pages/SelfAssessmentPage';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user } = useAuthStore();
@@ -63,6 +64,12 @@ function App() {
           <Route path="reports" element={
             <ProtectedRoute roles={['admin', 'hr']}>
               <ReportsPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="assessments" element={
+            <ProtectedRoute roles={['admin', 'hr', 'manager', 'employee']}>
+              <SelfAssessmentPage />
             </ProtectedRoute>
           } />
           <Route path="profile/:id?" element={<ProfilePage />} />

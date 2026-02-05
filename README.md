@@ -157,7 +157,7 @@ server/
     JWT_EXPIRE=24h
     REFRESH_TOKEN_SECRET=your_refresh_secret
     REFRESH_TOKEN_EXPIRE=7d
-    CLIENT_URL=http://localhost:5173
+    CLIENT_URL=http://host:5173
     EMAIL_HOST=smtp.gmail.com
     EMAIL_PORT=587
     EMAIL_USER=your_email

@@ -46,6 +46,7 @@ app.use('/api/support', require('./routes/supportRoutes'));
 app.use('/api/regularization', require('./routes/regularizationRoutes'));
 app.use('/api/permissions', require('./routes/permissionRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/assessments', require('./routes/assessmentRoutes'));
 
 app.get('/', (req, res) => {
     res.send('HRMS API is running...');
