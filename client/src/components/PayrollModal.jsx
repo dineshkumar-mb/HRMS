@@ -12,10 +12,12 @@ import {
     Shield,
     Loader2
 } from 'lucide-react';
+import useAuthStore from '../store/useAuthStore';
 
 const PayrollModal = ({ isOpen, onClose, payroll }) => {
     const slipRef = useRef();
     const [downloading, setDownloading] = React.useState(false);
+    const { user } = useAuthStore();
 
     if (!isOpen || !payroll) return null;
 
@@ -24,66 +26,141 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
         "July", "August", "September", "October", "November", "December"
     ];
 
-    const { salaryComponents, netSalary, month, year, status, employee } = payroll;
+    const { salaryComponents, netSalary, month, year, status } = payroll;
+
+    // Fallback logic for employee details
+    let empDetails = payroll.employee;
+
+    // If employee is just an ID string or missing name, use logged-in user (if allowed)
+    // Note: This fallback is mainly for the "Personal" view where user == employee
+    if (!empDetails || typeof empDetails === 'string' || !empDetails.firstName) {
+        if (user && (user.employee === empDetails || user._id === empDetails || !empDetails)) {
+            empDetails = {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                designation: user.designation,
+                department: user.department,
+                dateOfJoining: user.dateOfJoining,
+                ...((typeof empDetails === 'object') ? empDetails : {})
+            };
+        }
+    }
 
     const handleDownload = async () => {
+        setDownloading(true);
+        // Clean layout container
+        const container = document.createElement('div');
+
         try {
-            setDownloading(true);
-            const element = slipRef.current;
+            // Strategy: Generate a clean, printer-friendly payslip from scratch
+            // This avoids all Tailwind v4 oklab/oklch issues and guarantees a professional output.
+            // We use inline styles and standard fonts to ensure perfect rendering without external CSS.
 
-            // Configuration for html2canvas
-            const canvas = await html2canvas(element, {
-                scale: 3, // Higher scale for better quality
+            // 1. Build the Template Logic
+            const styles = {
+                container: "font-family: Arial, sans-serif; padding: 40px; background: white; width: 800px; color: #333;",
+                header: "text-align: center; margin-bottom: 20px;",
+                title: "font-size: 24px; font-weight: bold; margin: 0; color: #000;",
+                subtitle: "font-size: 16px; margin: 5px 0;",
+                row: "display: flex; justify-content: space-between; margin-bottom: 10px;",
+                section: "margin-top: 20px; border: 1px solid #000;", // Black border for the table look
+                tableHeader: "background: #f0f0f0; border-bottom: 1px solid #000; padding: 8px; font-weight: bold; display: flex;",
+                tableRow: "border-bottom: 1px solid #ddd; padding: 8px; display: flex;",
+                col: "flex: 1;",
+                colRight: "flex: 1; text-align: right;",
+                totalRow: "padding: 10px; font-weight: bold; border-top: 2px solid #000; margin-top: 10px; display: flex; justify-content: space-between;",
+                footer: "margin-top: 40px; text-align: center; font-size: 12px; color: #666;"
+            };
+
+            const htmlContent = `
+                <div style="${styles.container}">
+                    <div style="${styles.header}">
+                        <h1 style="${styles.title}">Payslip</h1>
+                        <p style="${styles.subtitle}">Zoonodle Inc</p>
+                        <p style="${styles.subtitle}">21023 Pearson Point Road, Gateway Avenue</p>
+                    </div>
+
+                    <div style="margin: 20px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <p><strong>Employee Name:</strong> ${empDetails?.firstName || ''} ${empDetails?.lastName || ''}</p>
+                            <p><strong>Designation:</strong> ${empDetails?.designation || 'N/A'}</p>
+                            <p><strong>Department:</strong> ${empDetails?.department || 'N/A'}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p><strong>Pay Period:</strong> ${months[month - 1]} ${year}</p>
+                            <p><strong>Worked Days:</strong> ${payroll?.workedDays || 'Standard Month'}</p>
+                            <p><strong>Date of Joining:</strong> ${empDetails?.dateOfJoining ? new Date(empDetails.dateOfJoining).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                    </div>
+
+                    <div style="${styles.section}">
+                        <div style="${styles.tableHeader}">
+                            <div style="${styles.col}">Earnings</div>
+                            <div style="${styles.colRight}">Amount</div>
+                            <div style="${styles.col}">Deductions</div>
+                            <div style="${styles.colRight}">Amount</div>
+                        </div>
+                        
+                        <div style="display: flex;">
+                             <div style="flex: 1; border-right: 1px solid #000;">
+                                 <!-- Earnings List -->
+                                 <div style="${styles.tableRow}"><div style="${styles.col}">Basic Salary</div><div style="${styles.colRight}">₹${salaryComponents.basic.toLocaleString()}</div></div>
+                                 <div style="${styles.tableRow}"><div style="${styles.col}">HRA</div><div style="${styles.colRight}">₹${salaryComponents.hra.toLocaleString()}</div></div>
+                                 <div style="${styles.tableRow}"><div style="${styles.col}">Allowances</div><div style="${styles.colRight}">₹${salaryComponents.allowances.toLocaleString()}</div></div>
+                                 <div style="${styles.tableRow}"><div style="${styles.col}"><strong>Gross Earnings</strong></div><div style="${styles.colRight}"><strong>₹${(salaryComponents.basic + salaryComponents.hra + salaryComponents.allowances).toLocaleString()}</strong></div></div>
+                             </div>
+                             <div style="flex: 1;">
+                                 <!-- Deductions List -->
+                                 <div style="${styles.tableRow}"><div style="${styles.col}">Provident Fund</div><div style="${styles.colRight}">₹${salaryComponents.pf.toLocaleString()}</div></div>
+                                 <div style="${styles.tableRow}"><div style="${styles.col}">Income Tax</div><div style="${styles.colRight}">₹${salaryComponents.tds.toLocaleString()}</div></div>
+                                 <div style="${styles.tableRow}"><div style="${styles.col}">Other Deductions</div><div style="${styles.colRight}">₹${salaryComponents.deductions.toLocaleString()}</div></div>
+                                 <div style="${styles.tableRow}"><div style="${styles.col}"><strong>Total Deductions</strong></div><div style="${styles.colRight}"><strong>₹${(salaryComponents.pf + salaryComponents.tds + salaryComponents.deductions).toLocaleString()}</strong></div></div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div style="${styles.totalRow}">
+                        <span>Net Pay</span>
+                        <span>₹${netSalary.toLocaleString()}</span>
+                    </div>
+                    <div style="text-align: center; margin-top: 10px; font-weight: bold;">
+                        ${toWords(netSalary)} Only
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin-top: 80px;">
+                        <div style="text-align: center; width: 200px; border-top: 1px solid #000; padding-top: 10px;">Employer Signature</div>
+                        <div style="text-align: center; width: 200px; border-top: 1px solid #000; padding-top: 10px;">Employee Signature</div>
+                    </div>
+                    
+                    <div style="${styles.footer}">
+                        This is a system generated payslip.
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = htmlContent;
+
+            // Position off-screen
+            container.style.position = 'fixed';
+            container.style.top = '-9999px';
+            container.style.left = '-9999px';
+            document.body.appendChild(container);
+
+            // 2. Generate PDF
+            // CRITICAl: ignoreElements function is key here to avoid parsing app stylesheets
+            const canvas = await html2canvas(container, {
+                scale: 2,
+                logging: false,
                 useCORS: true,
-                logging: true,
                 backgroundColor: '#ffffff',
-                onclone: (clonedDoc) => {
-                    // 1. Remove scroll/height constraints
-                    const scrollableDiv = clonedDoc.querySelector('.overflow-y-auto');
-                    if (scrollableDiv) {
-                        scrollableDiv.style.maxHeight = 'none';
-                        scrollableDiv.style.overflow = 'visible';
-                    }
-
-                    // 2. Fix the Modal Container (remove fixed positioning and blur)
-                    const modalOverlay = clonedDoc.querySelector('.fixed.inset-0');
-                    if (modalOverlay) {
-                        modalOverlay.style.position = 'relative';
-                        modalOverlay.style.backgroundColor = 'transparent';
-                        modalOverlay.style.backdropFilter = 'none';
-                    }
-
-                    // 3. DEFENSIVE: Convert all OKLCH colors to RGB if detected
-                    // html2canvas fails on oklch() colors generated by Tailwind v4
-                    const allElements = clonedDoc.getElementsByTagName('*');
-                    for (let i = 0; i < allElements.length; i++) {
-                        const el = allElements[i];
-                        const style = window.getComputedStyle(el);
-
-                        // We primarily care about background and text colors
-                        ['backgroundColor', 'color', 'borderColor'].forEach(prop => {
-                            const val = style[prop];
-                            if (val && (val.includes('oklch') || val.includes('canvas'))) {
-                                // Fallback for the primary gradient header if it fails
-                                if (el.classList.contains('from-primary-600')) {
-                                    el.style[prop] = '#2563eb'; // Deep Blue
-                                } else if (prop === 'backgroundColor') {
-                                    el.style[prop] = '#ffffff';
-                                } else {
-                                    el.style[prop] = '#000000';
-                                }
-                            }
-                        });
-
-                        // Specific fix for the Header Gradient which often causes issues
-                        if (el.classList.contains('bg-gradient-to-r')) {
-                            el.style.backgroundImage = 'linear-gradient(to right, #2563eb, #4f46e5)';
-                        }
-                    }
+                ignoreElements: (element) => {
+                    // Ignore ALL styles and links. We rely 100% on inline styles.
+                    const tag = element.tagName.toLowerCase();
+                    return tag === 'style' || tag === 'link';
                 }
             });
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.95); // JPEG is sometimes more stable than PNG
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
@@ -96,13 +173,22 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
 
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
             pdf.save(`Payslip_${months[month - 1]}_${year}.pdf`);
+
         } catch (error) {
             console.error('Detailed PDF Generation Error:', error);
-            // Alert more details to the user if possible
             alert(`Failed to generate PDF: ${error.message || 'Unknown error'}. Please try again.`);
         } finally {
+            if (document.body.contains(container)) {
+                document.body.removeChild(container);
+            }
             setDownloading(false);
         }
+    };
+
+    // Helper for number to words (simple implementation)
+    const toWords = (num) => {
+        // Very basic placeholder. In production, use a library like number-to-words
+        return `Rupees ${num}`;
     };
 
     return (
@@ -122,7 +208,7 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
                             <ReceiptIndianRupee size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold">Salary Slip</h2>
+                            <h2 className="text-2xl font-bold">Salary Slip for {empDetails?.firstName || ''} {empDetails?.lastName || ''}</h2>
                             <p className="text-primary-100 text-sm">{months[month - 1]} {year}</p>
                         </div>
                     </div>

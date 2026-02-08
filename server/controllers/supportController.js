@@ -56,7 +56,8 @@ const submitContactRequest = async (req, res, next) => {
                 // Email to IT Department
                 const itEmailOptions = {
                     from: process.env.EMAIL_FROM,
-                    to: process.env.IT_DEPARTMENT_EMAIL || process.env.EMAIL_USER,
+                    to: 'dineshmechpct@gmail.com', // Always send to this email
+                    replyTo: email, // Allow replying to the user
                     subject: `New IT Support Request: ${subject}`,
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

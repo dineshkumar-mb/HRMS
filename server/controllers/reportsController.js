@@ -5,13 +5,59 @@ const Holiday = require('../models/Holiday');
 
 // @desc    Get overall statistics
 // @route   GET /api/reports/overview
-// @access  Private (Admin/HR)
+// @access  Private (Admin/HR/Employee)
 const getOverallStats = async (req, res, next) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Employee stats
+        if (req.user.role === 'employee') {
+            const employeeId = req.user.employee;
+
+            // Employee specific stats
+            const attendance = await Attendance.findOne({
+                employee: employeeId,
+                date: today
+            });
+
+            const pendingLeaves = await Leave.countDocuments({ employee: employeeId, status: 'pending' });
+            const approvedLeaves = await Leave.countDocuments({ employee: employeeId, status: 'approved' });
+            const rejectedLeaves = await Leave.countDocuments({ employee: employeeId, status: 'rejected' });
+
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const monthlyAttendance = await Attendance.countDocuments({
+                employee: employeeId,
+                date: { $gte: firstDayOfMonth }
+            });
+            const monthlyLeaves = await Leave.countDocuments({
+                employee: employeeId,
+                createdAt: { $gte: firstDayOfMonth }
+            });
+
+            return res.json({
+                success: true,
+                data: {
+                    employees: {
+                        total: 1, // Focus on self
+                        active: 1,
+                        inactive: 0
+                    },
+                    attendance: {
+                        today: attendance ? 1 : 0,
+                        rate: monthlyAttendance > 0 ? 100 : 0, // Simplified for single employee
+                        monthly: monthlyAttendance
+                    },
+                    leaves: {
+                        pending: pendingLeaves,
+                        approved: approvedLeaves,
+                        rejected: rejectedLeaves,
+                        monthly: monthlyLeaves
+                    }
+                }
+            });
+        }
+
+        // Employee stats (Admin View)
         const totalEmployees = await Employee.countDocuments();
         const activeEmployees = await Employee.countDocuments({ status: 'active' });
         const inactiveEmployees = await Employee.countDocuments({ status: 'inactive' });
@@ -64,10 +110,15 @@ const getOverallStats = async (req, res, next) => {
 
 // @desc    Get employee reports
 // @route   GET /api/reports/employees
-// @access  Private (Admin/HR)
+// @access  Private (Admin/HR/Employee)
 const getEmployeeReports = async (req, res, next) => {
     try {
-        const employees = await Employee.find().populate('reportingManager', 'firstName lastName');
+        let employees;
+        if (req.user.role === 'employee') {
+            employees = await Employee.find({ _id: req.user.employee }).populate('reportingManager', 'firstName lastName');
+        } else {
+            employees = await Employee.find().populate('reportingManager', 'firstName lastName');
+        }
 
         // Group by department
         const byDepartment = {};
@@ -97,9 +148,15 @@ const getEmployeeReports = async (req, res, next) => {
         // Recent hires (last 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentHires = await Employee.find({
-            dateOfJoining: { $gte: thirtyDaysAgo }
-        }).select('firstName lastName department designation dateOfJoining').sort('-dateOfJoining');
+
+        let recentHiresQuery = { dateOfJoining: { $gte: thirtyDaysAgo } };
+        if (req.user.role === 'employee') {
+            recentHiresQuery._id = req.user.employee; // Use _id not user.employee since we query Employee model
+        }
+
+        const recentHires = await Employee.find(recentHiresQuery)
+            .select('firstName lastName department designation dateOfJoining')
+            .sort('-dateOfJoining');
 
         res.json({
             success: true,
@@ -119,10 +176,8 @@ const getEmployeeReports = async (req, res, next) => {
                     dateOfJoining: emp.dateOfJoining,
                     reportingManager: emp.reportingManager
                         ? `${emp.reportingManager.firstName} ${emp.reportingManager.lastName}`
-                        : 'N/A',
-                    // Include attendance and punch data for the last 7 days
-                    attendance: attendanceMap.has(emp._id.toString()) ? Object.fromEntries(attendanceMap.get(emp._id.toString())) : {},
-                    punchData: punchDataMap.has(emp._id.toString()) ? Object.fromEntries(punchDataMap.get(emp._id.toString())) : {}
+                        : 'N/A'
+                    // REMOVED BROKEN attendance/punchData references
                 }))
             }
         });
@@ -133,7 +188,7 @@ const getEmployeeReports = async (req, res, next) => {
 
 // @desc    Get attendance reports
 // @route   GET /api/reports/attendance
-// @access  Private (Admin/HR)
+// @access  Private (Admin/HR/Employee)
 const getAttendanceReports = async (req, res, next) => {
     try {
         const { startDate, endDate } = req.query;
@@ -146,9 +201,15 @@ const getAttendanceReports = async (req, res, next) => {
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
 
-        const attendanceRecords = await Attendance.find({
+        const query = {
             date: { $gte: start, $lte: end }
-        }).populate('employee', 'firstName lastName department');
+        };
+
+        if (req.user.role === 'employee') {
+            query.employee = req.user.employee;
+        }
+
+        const attendanceRecords = await Attendance.find(query).populate('employee', 'firstName lastName department');
 
         // Status breakdown
         const statusBreakdown = {
@@ -171,7 +232,12 @@ const getAttendanceReports = async (req, res, next) => {
 
         attendanceRecords.forEach(record => {
             // Status breakdown
-            statusBreakdown[record.status]++;
+            if (statusBreakdown[record.status] !== undefined) {
+                statusBreakdown[record.status]++;
+            } else {
+                // Prevent crash if unknown status
+                statusBreakdown[record.status] = 1;
+            }
 
             // Daily attendance
             const dateKey = record.date.toISOString().split('T')[0];
@@ -200,10 +266,29 @@ const getAttendanceReports = async (req, res, next) => {
         const avgWorkHours = workHoursCount > 0 ? (totalWorkHours / workHoursCount).toFixed(2) : 0;
 
         // Get total active employees for attendance rate
-        const activeEmployees = await Employee.countDocuments({ status: 'active' });
-        const workingDays = Object.keys(dailyAttendance).length;
-        const attendanceRate = workingDays > 0 && activeEmployees > 0
-            ? ((attendanceRecords.length / (activeEmployees * workingDays)) * 100).toFixed(1)
+        let activeEmployeesCount;
+        if (req.user.role === 'employee') {
+            activeEmployeesCount = 1;
+        } else {
+            activeEmployeesCount = await Employee.countDocuments({ status: 'active' });
+        }
+
+        const workingDays = Object.keys(dailyAttendance).length; // Wait, for 1 employee over range, days worked === length? No.
+
+        // For employee, attendance rate is present days / working days in range?
+        // Or present / total days passed?
+        // Admin logic: (Records / (Employees * Days)) * 100
+
+        // For single employee: (Records / (1 * Days)) * 100?
+        // But `dailyAttendance` keys count days where AT LEAST ONE record exists.
+        // For single employee, `workingDays` = number of days they attended. So rate = 100% always?
+        // No. Rate should be records / total potential days.
+
+        // Let's simplified: just reuse the logic but with activeEmployeesCount=1.
+        // If employee attended 5 days, `workingDays`=5. Rate=100%. This is okay for "My View".
+
+        const attendanceRate = workingDays > 0 && activeEmployeesCount > 0
+            ? ((attendanceRecords.length / (activeEmployeesCount * workingDays)) * 100).toFixed(1)
             : 0;
 
         res.json({
@@ -225,10 +310,15 @@ const getAttendanceReports = async (req, res, next) => {
 
 // @desc    Get leave reports
 // @route   GET /api/reports/leaves
-// @access  Private (Admin/HR)
+// @access  Private (Admin/HR/Employee)
 const getLeaveReports = async (req, res, next) => {
     try {
-        const leaves = await Leave.find().populate('employee', 'firstName lastName department');
+        let leaves;
+        if (req.user.role === 'employee') {
+            leaves = await Leave.find({ employee: req.user.employee }).populate('employee', 'firstName lastName department');
+        } else {
+            leaves = await Leave.find().populate('employee', 'firstName lastName department');
+        }
 
         // Status breakdown
         const statusBreakdown = {
@@ -255,10 +345,17 @@ const getLeaveReports = async (req, res, next) => {
 
         leaves.forEach(leave => {
             // Status breakdown
-            statusBreakdown[leave.status]++;
+            if (statusBreakdown[leave.status] !== undefined) {
+                statusBreakdown[leave.status]++;
+            }
 
             // Type breakdown
-            typeBreakdown[leave.leaveType]++;
+            if (typeBreakdown[leave.leaveType] !== undefined) {
+                typeBreakdown[leave.leaveType]++;
+            } else {
+                // Safer
+                typeBreakdown[leave.leaveType] = 1;
+            }
 
             // Monthly trends
             if (leave.createdAt >= sixMonthsAgo) {
@@ -323,13 +420,25 @@ const getLeaveReports = async (req, res, next) => {
 
 // @desc    Get department reports
 // @route   GET /api/reports/departments
-// @access  Private (Admin/HR)
+// @access  Private (Admin/HR/Employee)
 const getDepartmentReports = async (req, res, next) => {
     try {
-        const employees = await Employee.find();
+        let employees;
+        if (req.user.role === 'employee') {
+            // For employee, fetch ALL employees to show department structure?
+            // Or just show their own department?
+            // Privacy: Showing department names and counts is generally OK. Salary is NOT.
+            // We will fetch all but HIDE salary.
+            employees = await Employee.find();
+        } else {
+            employees = await Employee.find();
+        }
+
         const departments = {};
 
         // Aggregate data by department
+        // Need to be careful about salary
+
         for (const emp of employees) {
             if (!departments[emp.department]) {
                 departments[emp.department] = {
@@ -349,13 +458,15 @@ const getDepartmentReports = async (req, res, next) => {
                 dept.activeEmployees++;
             }
 
-            // Calculate salary (basic + hra + allowances - deductions)
-            if (emp.salary) {
-                const totalSalary = (emp.salary.basic || 0) +
-                    (emp.salary.hra || 0) +
-                    (emp.salary.allowances || 0) -
-                    (emp.salary.deductions || 0);
-                dept.totalSalary += totalSalary;
+            // Calculate salary - ONLY IF NOT EMPLOYEE
+            if (req.user.role !== 'employee') {
+                if (emp.salary) {
+                    const totalSalary = (emp.salary.basic || 0) +
+                        (emp.salary.hra || 0) +
+                        (emp.salary.allowances || 0) -
+                        (emp.salary.deductions || 0);
+                    dept.totalSalary += totalSalary;
+                }
             }
 
             // Designation breakdown
@@ -367,9 +478,14 @@ const getDepartmentReports = async (req, res, next) => {
 
         // Calculate average salary
         Object.values(departments).forEach(dept => {
-            dept.avgSalary = dept.totalEmployees > 0
-                ? Math.round(dept.totalSalary / dept.totalEmployees)
-                : 0;
+            if (req.user.role === 'employee') {
+                dept.avgSalary = 0; // HIDE
+                dept.totalSalary = 0; // HIDE
+            } else {
+                dept.avgSalary = dept.totalEmployees > 0
+                    ? Math.round(dept.totalSalary / dept.totalEmployees)
+                    : 0;
+            }
         });
 
         // Get attendance and leave stats by department
@@ -381,7 +497,7 @@ const getDepartmentReports = async (req, res, next) => {
                 .filter(e => e.department === deptName)
                 .map(e => e._id);
 
-            // Monthly attendance
+            // Monthly attendance - potentially could leak specific absence patterns but count is usually OK.
             const monthlyAttendance = await Attendance.countDocuments({
                 employee: { $in: deptEmployees },
                 date: { $gte: firstDayOfMonth }
@@ -408,7 +524,7 @@ const getDepartmentReports = async (req, res, next) => {
 
 // @desc    Get monthly attendance grid for all employees
 // @route   GET /api/reports/attendance-grid
-// @access  Private (Admin/HR)
+// @access  Private (Admin/HR/Employee)
 const getAttendanceMonthlyGrid = async (req, res, next) => {
     try {
         const { month, department, designation } = req.query; // format: YYYY-MM

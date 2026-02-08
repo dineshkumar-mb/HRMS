@@ -46,7 +46,9 @@ const generatePayroll = async (req, res, next) => {
 // @access  Private
 const getMyPayroll = async (req, res, next) => {
     try {
-        const payroll = await Payroll.find({ employee: req.user.employee }).sort('-year -month');
+        const payroll = await Payroll.find({ employee: req.user.employee })
+            .populate('employee', 'firstName lastName designation department dateOfJoining employeeId')
+            .sort('-year -month');
         res.json({ success: true, data: payroll });
     } catch (error) {
         next(error);
@@ -59,7 +61,7 @@ const getMyPayroll = async (req, res, next) => {
 const getAllPayroll = async (req, res, next) => {
     try {
         const { month, year } = req.query;
-        const payroll = await Payroll.find({ month, year }).populate('employee', 'firstName lastName department employeeId');
+        const payroll = await Payroll.find({ month, year }).populate('employee', 'firstName lastName department designation dateOfJoining employeeId');
         res.json({ success: true, data: payroll });
     } catch (error) {
         next(error);

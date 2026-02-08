@@ -59,7 +59,40 @@ router.get('/', protect, async (req, res) => {
             if (!employee) {
                 return res.status(404).json({ success: false, message: 'Employee profile not found' });
             }
-            query = { employee: employee._id };
+
+            // Check for current period assessment
+            const date = new Date();
+            const quarter = Math.floor((date.getMonth() + 3) / 3);
+            const currentPeriod = `Q${quarter} ${date.getFullYear()}`;
+
+            const assessments = await Assessment.find({ employee: employee._id })
+                .sort('-createdAt'); // Sort by newest
+
+            const currentExists = assessments.find(a => a.period === currentPeriod);
+
+            let results = assessments.map(a => ({
+                ...a.toObject(),
+                employeeDetails: employee, // Map for frontend compatibility
+                id: a._id
+            }));
+
+            if (!currentExists) {
+                // Add placeholder for current period
+                results.unshift({
+                    _id: `temp_${employee._id}`,
+                    employee: employee._id,
+                    employeeDetails: employee,
+                    period: currentPeriod,
+                    status: 'Pending',
+                    isPlaceholder: true
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                count: results.length,
+                data: results
+            });
         }
 
         // For Admin/HR, we might want to see a list of ALL employees with their current assessment status

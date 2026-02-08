@@ -16,7 +16,7 @@ router.use(protect);
 router.get('/attendance-grid', authorize('admin', 'hr', 'employee'), getAttendanceMonthlyGrid);
 
 // Restrict all other report routes to admin and hr only
-router.use(authorize('admin', 'hr'));
+router.use(authorize('admin', 'hr', 'employee'));
 
 router.get('/overview', getOverallStats);
 router.get('/employees', getEmployeeReports);

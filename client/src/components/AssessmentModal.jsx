@@ -51,12 +51,17 @@ const AssessmentModal = ({ isOpen, onClose, assessmentId, onSaveSuccess }) => {
                 ...formData
             };
 
+            // Remove 0 ratings (unrated) as schema enforces min: 1
+            if (payload.selfRating === 0) delete payload.selfRating;
+            if (payload.managerRating === 0) delete payload.managerRating;
+
             // If it's a placeholder, we create. If not, POST handles update too.
             await api.post('/assessments', payload);
             onSaveSuccess();
             onClose();
         } catch (error) {
             console.error('Error saving assessment:', error);
+            alert('Failed to save assessment. Please try again.');
         } finally {
             setSaving(false);
         }
