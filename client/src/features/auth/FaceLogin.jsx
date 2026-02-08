@@ -76,7 +76,7 @@ const FaceLogin = ({ onBack, onSuccess }) => {
                     audio={false}
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
-                    className="w-full h-full object-cover grayscale opacity-80"
+                    className="w-full h-full object-cover"
                     videoConstraints={{ facingMode: "user" }}
                 />
                 <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
