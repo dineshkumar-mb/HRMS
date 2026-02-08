@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const isLocal = window.location.hostname === 'localhost';
+const baseURL = isLocal ? 'http://localhost:5000/api' : 'https://hrms-22ch.onrender.com/api';
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://hrms-22ch.onrender.com/api',
+    baseURL,
     withCredentials: true,
 });
 
