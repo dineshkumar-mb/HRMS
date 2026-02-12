@@ -444,6 +444,19 @@ const EmployeesPage = () => {
                                 {errors.email && <span className="text-xs text-red-500 ml-1">Please enter a valid work email</span>}
                             </div>
 
+                            {!editingEmployee && (
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Initial Password</label>
+                                    <input
+                                        type="text"
+                                        {...register('password', { minLength: 6 })}
+                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
+                                        placeholder="Welcome@123 (Default)"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Leave blank to use default: Welcome@123</p>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
