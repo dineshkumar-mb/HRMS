@@ -106,26 +106,26 @@ const ReportsPage = () => {
     return (
         <div className="space-y-8 pb-10">
             {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
                     <p className="text-gray-500 text-sm mt-1">Comprehensive insights into your organization</p>
                 </div>
-                <div className="flex gap-3">
-                    <div className="flex gap-2 items-center bg-white border border-gray-200 rounded-xl px-4 py-2">
-                        <Calendar size={18} className="text-gray-400" />
+                <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                    <div className="flex flex-wrap gap-2 items-center bg-white border border-gray-200 rounded-xl px-3 py-2 w-full sm:w-auto">
+                        <Calendar size={18} className="text-gray-400 shrink-0" />
                         <input
                             type="date"
                             value={dateRange.startDate}
                             onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                            className="text-sm border-none outline-none"
+                            className="text-sm border-none outline-none flex-1 sm:flex-initial"
                         />
                         <span className="text-gray-400">-</span>
                         <input
                             type="date"
                             value={dateRange.endDate}
                             onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                            className="text-sm border-none outline-none"
+                            className="text-sm border-none outline-none flex-1 sm:flex-initial"
                         />
                     </div>
                 </div>

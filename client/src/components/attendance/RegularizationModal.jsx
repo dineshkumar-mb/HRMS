@@ -29,39 +29,39 @@ const RegularizationModal = ({ isOpen, onClose, onSuccess }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+            <div className="bg-white rounded-3xl w-full max-w-md p-5 sm:p-8 shadow-2xl animate-in zoom-in slide-in-from-bottom-4 duration-300 max-h-[90vh] overflow-y-auto my-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h3 className="text-2xl font-bold text-gray-900">Regularization Request</h3>
-                        <p className="text-sm text-gray-500 mt-1">Found an error in your logs? Raise it here.</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Regularization Request</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1">Found an error in your logs? Raise it here.</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors focus:outline-none"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                     <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Attendance Date</label>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Attendance Date</label>
                         <div className="relative">
                             <input
                                 name="date"
                                 type="date"
                                 required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all"
+                                className="w-full px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all text-sm"
                             />
                         </div>
                     </div>
                     <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Request Type</label>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Request Type</label>
                         <select
                             name="type"
                             required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all font-bold text-gray-700"
+                            className="w-full px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all font-bold text-gray-700 text-sm"
                         >
                             <option value="mis-punch">Mis-punch (Forgot In/Out)</option>
                             <option value="late-entry">Late Entry</option>
@@ -69,18 +69,18 @@ const RegularizationModal = ({ isOpen, onClose, onSuccess }) => {
                             <option value="other">Incorrect Status</option>
                         </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Correct Start</label>
-                            <input name="startTime" type="time" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all" />
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Correct Start</label>
+                            <input name="startTime" type="time" className="w-full px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all text-sm" />
                         </div>
                         <div>
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Correct End</label>
-                            <input name="endTime" type="time" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all" />
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Correct End</label>
+                            <input name="endTime" type="time" className="w-full px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all text-sm" />
                         </div>
                     </div>
                     <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Reason / Explanation</label>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Reason / Explanation</label>
                         <textarea
                             name="reason"
                             required

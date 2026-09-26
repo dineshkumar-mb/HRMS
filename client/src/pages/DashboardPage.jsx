@@ -162,9 +162,9 @@ const DashboardPage = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center text-xs text-[#5bc0de]">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 text-xs text-[#5bc0de]">
                 <h1 className="text-xl font-bold text-gray-800">Dashboard</h1>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                     <button
                         onClick={() => setShowPermissionModal(true)}
                         className="flex items-center gap-1 hover:text-[#46b8da] transition-colors"
@@ -188,12 +188,12 @@ const DashboardPage = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Attendance Punch Card */}
-                <div className="bg-white rounded-sm border border-gray-200 shadow-sm overflow-hidden h-[300px]">
+                <div className="bg-white rounded-sm border border-gray-200 shadow-sm overflow-hidden min-h-[280px] flex flex-col">
                     <div className="border-b-2 border-[#d9534f] px-4 py-2">
                         <h3 className="text-sm font-bold text-gray-700">Attendance</h3>
                     </div>
-                    <div className="p-8 flex flex-col items-center justify-center space-y-6">
-                        <h2 className="text-2xl font-medium text-gray-600">
+                    <div className="p-4 sm:p-8 flex-1 flex flex-col items-center justify-center space-y-4 sm:space-y-6">
+                        <h2 className="text-base sm:text-xl font-medium text-gray-600 text-center">
                             {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' })} {currentTime.toLocaleTimeString()}
                         </h2>
 
@@ -232,12 +232,12 @@ const DashboardPage = () => {
                 </div>
 
                 {/* My Regularization Card */}
-                <div className="bg-white rounded-sm border border-gray-200 shadow-sm overflow-hidden h-[300px]">
+                <div className="bg-white rounded-sm border border-gray-200 shadow-sm overflow-hidden min-h-[280px] flex flex-col">
                     <div className="border-b-2 border-[#d9534f] px-4 py-2">
                         <h3 className="text-sm font-bold text-gray-700">My Regularization</h3>
                     </div>
-                    <div className="overflow-x-auto h-[250px]">
-                        <table className="w-full text-left text-xs">
+                    <div className="overflow-x-auto flex-1 h-[250px]">
+                        <table className="w-full text-left text-xs min-w-[260px]">
                             <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
                                 <tr>
                                     <th className="px-4 py-2 font-bold text-gray-600">Attendance Date</th>
@@ -274,14 +274,14 @@ const DashboardPage = () => {
             </div>
 
             {/* Bottom Social Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group cursor-pointer hover:shadow-md transition-all">
                     <div className="h-24 bg-gradient-to-r from-blue-400 to-primary-400 relative">
                         <div className="absolute -bottom-6 left-6 bg-white p-3 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
                             <UserPlus className="text-primary-600" size={24} />
                         </div>
                     </div>
-                    <div className="p-8 pt-10 px-6">
+                    <div className="p-6 sm:p-8 pt-10 px-5 sm:px-6">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h4 className="font-bold text-gray-800">New Joiners</h4>
@@ -299,7 +299,7 @@ const DashboardPage = () => {
                             <Gift className="text-orange-600" size={24} />
                         </div>
                     </div>
-                    <div className="p-8 pt-10 px-6">
+                    <div className="p-6 sm:p-8 pt-10 px-5 sm:px-6">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h4 className="font-bold text-gray-800">Birthdays</h4>
@@ -311,13 +311,13 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group cursor-pointer hover:shadow-md transition-all">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group cursor-pointer hover:shadow-md transition-all sm:col-span-2 lg:col-span-1">
                     <div className="h-24 bg-gradient-to-r from-purple-400 to-indigo-400 relative">
                         <div className="absolute -bottom-6 left-6 bg-white p-3 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
                             <Trophy className="text-purple-600" size={24} />
                         </div>
                     </div>
-                    <div className="p-8 pt-10 px-6">
+                    <div className="p-6 sm:p-8 pt-10 px-5 sm:px-6">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h4 className="font-bold text-gray-800">Job Anniversaries</h4>
@@ -332,8 +332,8 @@ const DashboardPage = () => {
 
             {/* Permission Modal */}
             {showPermissionModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+                    <div className="bg-white rounded-xl w-full max-w-md p-5 sm:p-6 shadow-2xl animate-in zoom-in-95 duration-200 my-auto max-h-[90vh] overflow-y-auto">
                         <h3 className="text-lg font-bold text-gray-900 mb-4">Apply for Permission (2 Hours)</h3>
                         <p className="text-xs text-gray-500 mb-6">Note: You can only apply for one 2-hour permission per month.</p>
                         <form onSubmit={handlePermissionSubmit} className="space-y-4">

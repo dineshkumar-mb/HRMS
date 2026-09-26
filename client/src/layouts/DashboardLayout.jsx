@@ -31,7 +31,8 @@ function cn(...inputs) {
 }
 
 const DashboardLayout = () => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState({});
@@ -43,6 +44,23 @@ const DashboardLayout = () => {
         fetchNotifications();
         const interval = setInterval(fetchNotifications, 60000); // Poll every minute
         return () => clearInterval(interval);
+    }, []);
+
+    // Close mobile menu on route change
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
+
+    // Close on Escape key
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setMobileMenuOpen(false);
+                setShowNotifications(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
     const fetchNotifications = async () => {
@@ -113,103 +131,170 @@ const DashboardLayout = () => {
         !item.roles || (user && item.roles.includes(user.role))
     );
 
-    return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
-            {/* Sidebar */}
-            <aside
-                className={cn(
-                    "bg-white border-r border-gray-200 transition-all duration-300 z-30 flex flex-col",
-                    isSidebarOpen ? "w-64" : "w-20"
-                )}
-            >
-                <div className="h-16 flex items-center px-6 bg-[#5bc0de] text-white">
-                    <div className="flex items-center gap-3">
-                        <LayoutDashboard size={20} />
-                        {isSidebarOpen && <span className="text-lg font-bold italic tracking-wider">HRMS PORTAL</span>}
-                    </div>
+    const renderSidebarContent = (isCollapsed = false, isMobile = false) => (
+        <div className="flex flex-col h-full bg-[#777777] select-none text-white">
+            {/* Sidebar Brand Header */}
+            <div className="h-16 flex items-center justify-between px-4 sm:px-6 bg-[#5bc0de] text-white shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                    <LayoutDashboard size={20} className="shrink-0" />
+                    {!isCollapsed && <span className="text-lg font-bold italic tracking-wider truncate">HRMS PORTAL</span>}
                 </div>
+                {isMobile && (
+                    <button
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors focus:outline-none"
+                        aria-label="Close menu"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
+            </div>
 
-                <nav className="flex-1 px-0 py-0 space-y-0 overflow-y-auto bg-[#777777]">
-                    {filteredNavItems.map((item) => (
-                        <div key={item.path}>
-                            <div
-                                onClick={() => {
-                                    if (item.subItems && Array.isArray(item.subItems)) {
-                                        setExpandedMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }));
-                                    } else {
-                                        navigate(item.path);
-                                    }
-                                }}
-                                className={cn(
-                                    "flex items-center justify-between px-4 py-3 transition-all border-b border-[#888888] text-white hover:bg-[#666666] cursor-pointer",
-                                    location.pathname === item.path && !Array.isArray(item.subItems)
-                                        ? "bg-[#5bc0de]"
-                                        : ""
-                                )}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <item.icon size={18} />
-                                    {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
-                                </div>
-                                {isSidebarOpen && item.subItems && (
-                                    <span className={cn(
-                                        "text-[10px] transition-transform duration-200",
-                                        expandedMenus[item.name] ? "rotate-90" : ""
-                                    )}>❮</span>
-                                )}
+            {/* Navigation links */}
+            <nav className="flex-1 px-0 py-0 space-y-0 overflow-y-auto bg-[#777777]">
+                {filteredNavItems.map((item) => (
+                    <div key={item.path}>
+                        <div
+                            onClick={() => {
+                                if (item.subItems && Array.isArray(item.subItems)) {
+                                    setExpandedMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }));
+                                } else {
+                                    navigate(item.path);
+                                    if (isMobile) setMobileMenuOpen(false);
+                                }
+                            }}
+                            className={cn(
+                                "flex items-center justify-between px-4 py-3 transition-all border-b border-[#888888] text-white hover:bg-[#666666] cursor-pointer",
+                                location.pathname === item.path && !Array.isArray(item.subItems)
+                                    ? "bg-[#5bc0de]"
+                                    : "",
+                                isCollapsed && "justify-center px-2"
+                            )}
+                            title={isCollapsed ? item.name : undefined}
+                        >
+                            <div className="flex items-center gap-3 min-w-0">
+                                <item.icon size={18} className="shrink-0" />
+                                {!isCollapsed && <span className="text-sm font-medium truncate">{item.name}</span>}
                             </div>
-                            {isSidebarOpen && item.subItems && Array.isArray(item.subItems) && expandedMenus[item.name] && (
-                                <div className="bg-[#555555]">
-                                    {item.subItems.map((sub) => (
-                                        <Link
-                                            key={sub.path}
-                                            to={sub.path}
-                                            className={cn(
-                                                "flex items-center gap-3 pl-12 py-2 text-xs text-gray-300 hover:text-white hover:bg-[#444444] transition-all",
-                                                location.pathname === sub.path ? "text-[#5bc0de] font-bold" : ""
-                                            )}
-                                        >
-                                            <div className={cn(
-                                                "w-1.5 h-1.5 rounded-full border border-current",
-                                                location.pathname === sub.path ? "bg-[#5bc0de]" : ""
-                                            )} />
-                                            {sub.name}
-                                        </Link>
-                                    ))}
-                                </div>
+                            {!isCollapsed && item.subItems && (
+                                <span className={cn(
+                                    "text-[10px] transition-transform duration-200 shrink-0",
+                                    expandedMenus[item.name] ? "rotate-90" : ""
+                                )}>❮</span>
                             )}
                         </div>
-                    ))}
-                </nav>
-
-                <div className="p-4 border-t border-gray-100">
-                    <button
-                        onClick={handleLogout}
-                        className={cn(
-                            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all w-full group",
+                        {!isCollapsed && item.subItems && Array.isArray(item.subItems) && expandedMenus[item.name] && (
+                            <div className="bg-[#555555]">
+                                {item.subItems.map((sub) => (
+                                    <Link
+                                        key={sub.path}
+                                        to={sub.path}
+                                        onClick={() => { if (isMobile) setMobileMenuOpen(false); }}
+                                        className={cn(
+                                            "flex items-center gap-3 pl-12 py-2 text-xs text-gray-300 hover:text-white hover:bg-[#444444] transition-all",
+                                            location.pathname === sub.path ? "text-[#5bc0de] font-bold" : ""
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "w-1.5 h-1.5 rounded-full border border-current",
+                                            location.pathname === sub.path ? "bg-[#5bc0de]" : ""
+                                        )} />
+                                        <span className="truncate">{sub.name}</span>
+                                    </Link>
+                                ))}
+                            </div>
                         )}
-                    >
-                        <LogOut size={22} className="group-hover:text-red-600" />
-                        {isSidebarOpen && <span className="font-medium">Logout</span>}
-                    </button>
-                </div>
+                    </div>
+                ))}
+            </nav>
+
+            {/* Logout bottom button */}
+            <div className="p-4 border-t border-[#888888] bg-[#666666] shrink-0">
+                <button
+                    onClick={() => {
+                        if (isMobile) setMobileMenuOpen(false);
+                        handleLogout();
+                    }}
+                    className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-white hover:bg-red-600/80 transition-all w-full group",
+                        isCollapsed && "justify-center px-2"
+                    )}
+                    title={isCollapsed ? "Logout" : undefined}
+                >
+                    <LogOut size={20} className="shrink-0" />
+                    {!isCollapsed && <span className="font-medium text-sm">Logout</span>}
+                </button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="flex h-screen bg-gray-50 overflow-hidden">
+            {/* Mobile Drawer Backdrop */}
+            {mobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 md:hidden transition-opacity"
+                    onClick={() => setMobileMenuOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+
+            {/* Mobile Sidebar Drawer */}
+            <aside
+                className={cn(
+                    "fixed inset-y-0 left-0 z-50 w-64 shadow-2xl transition-transform duration-300 ease-in-out md:hidden flex flex-col",
+                    mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+                )}
+            >
+                {renderSidebarContent(false, true)}
             </aside>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Topbar */}
-                <header className="h-16 bg-[#5bc0de] flex items-center justify-between px-6 z-20 text-white">
-                    <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-bold tracking-tight">
+            {/* Desktop Persistent Sidebar */}
+            <aside
+                className={cn(
+                    "hidden md:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 z-30 shrink-0",
+                    isDesktopCollapsed ? "w-20" : "w-64"
+                )}
+            >
+                {renderSidebarContent(isDesktopCollapsed, false)}
+            </aside>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                {/* Topbar Header */}
+                <header className="h-16 bg-[#5bc0de] flex items-center justify-between px-3 sm:px-6 z-20 text-white shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                        {/* Mobile Hamburger Button */}
+                        <button
+                            onClick={() => setMobileMenuOpen(true)}
+                            className="p-2 -ml-1 rounded-lg hover:bg-white/15 text-white md:hidden transition-colors focus:outline-none"
+                            aria-label="Open menu"
+                        >
+                            <Menu size={22} />
+                        </button>
+
+                        {/* Desktop Collapse Toggle Button */}
+                        <button
+                            onClick={() => setIsDesktopCollapsed(prev => !prev)}
+                            className="hidden md:inline-flex p-2 -ml-2 rounded-lg hover:bg-white/15 text-white transition-colors focus:outline-none"
+                            title={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                            aria-label="Toggle sidebar"
+                        >
+                            <Menu size={20} />
+                        </button>
+
+                        <h2 className="text-base sm:text-xl font-bold tracking-tight truncate">
                             {filteredNavItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
                         </h2>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                        {/* Notification Bell */}
                         <div className="relative">
                             <button
                                 onClick={() => setShowNotifications(!showNotifications)}
-                                className="p-2 rounded-lg hover:bg-white/10 text-white relative transition-colors"
+                                className="p-2 rounded-lg hover:bg-white/15 text-white relative transition-colors focus:outline-none"
+                                aria-label="Notifications"
                             >
                                 <Bell size={20} />
                                 {unreadCount > 0 && (
@@ -225,7 +310,7 @@ const DashboardLayout = () => {
                                         className="fixed inset-0 z-30"
                                         onClick={() => setShowNotifications(false)}
                                     ></div>
-                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-100 z-40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                         <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
                                             <h3 className="font-bold text-gray-900 text-sm">Notifications</h3>
                                             {unreadCount > 0 && (
@@ -237,7 +322,7 @@ const DashboardLayout = () => {
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="max-h-[400px] overflow-y-auto">
+                                        <div className="max-h-[360px] overflow-y-auto">
                                             {notifications.length === 0 ? (
                                                 <div className="p-8 text-center">
                                                     <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -294,20 +379,22 @@ const DashboardLayout = () => {
                                 </>
                             )}
                         </div>
-                        <Link to="/profile" className="flex items-center gap-3 pl-4 border-l border-white/20 hover:opacity-80 transition-opacity">
-                            <div className="text-right hidden sm:block">
-                                <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
-                                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+
+                        {/* Profile User Badge */}
+                        <Link to="/profile" className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-white/20 hover:opacity-90 transition-opacity">
+                            <div className="text-right hidden sm:block max-w-[150px]">
+                                <p className="text-sm font-semibold text-white truncate">{user?.email}</p>
+                                <p className="text-xs text-white/80 capitalize">{user?.role}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 border border-gray-300">
-                                <UserIcon size={20} />
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center text-white border border-white/30 shrink-0">
+                                <UserIcon size={18} />
                             </div>
                         </Link>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-6">
+                <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 min-w-0">
                     <Outlet />
                 </main>
             </div>

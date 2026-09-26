@@ -36,7 +36,7 @@ const MyAttendanceLog = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center text-xs text-[#5bc0de]">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-[#5bc0de]">
                 <h1 className="text-xl font-bold text-gray-800">My Attendance Log</h1>
                 <div className="flex items-center gap-1">
                     <Clock size={12} />
@@ -46,7 +46,7 @@ const MyAttendanceLog = () => {
 
             <div className="bg-white rounded-sm border border-gray-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <div className="relative w-64">
+                    <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input
                             type="text"

@@ -86,7 +86,7 @@ const AttendanceCalendar = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center text-xs text-[#5bc0de]">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-[#5bc0de]">
                 <h1 className="text-xl font-bold text-gray-800">Attendance Calendar</h1>
                 <div className="flex items-center gap-1">
                     <CalendarIcon size={12} />
@@ -94,38 +94,42 @@ const AttendanceCalendar = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-sm border border-gray-200 shadow-sm p-6">
+            <div className="bg-white rounded-sm border border-gray-200 shadow-sm p-4 sm:p-6 overflow-hidden">
                 <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
                         <button
                             onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                            className="bg-[#5bc0de] text-white p-1 rounded-sm"
+                            className="bg-[#5bc0de] text-white p-1.5 rounded-sm hover:bg-[#46b8da] transition-colors"
+                            aria-label="Previous month"
                         >
-                            <ChevronLeft size={20} />
+                            <ChevronLeft size={18} />
                         </button>
-                        <h2 className="text-lg font-bold text-gray-700 capitalize">
+                        <h2 className="text-base sm:text-lg font-bold text-gray-700 capitalize">
                             {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                         </h2>
                         <button
                             onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                            className="bg-[#5bc0de] text-white p-1 rounded-sm"
+                            className="bg-[#5bc0de] text-white p-1.5 rounded-sm hover:bg-[#46b8da] transition-colors"
+                            aria-label="Next month"
                         >
-                            <ChevronRight size={20} />
+                            <ChevronRight size={18} />
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-7 border-t border-l border-gray-100">
-                    {['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'].map(day => (
-                        <div key={day} className="bg-[#5bc0de] text-white text-center py-2 text-xs font-bold border-r border-b border-[#46b8da]">
-                            {day}
-                        </div>
-                    ))}
-                    {loading ? (
-                        <div className="col-span-7 h-96 flex items-center justify-center">
-                            <Loader2 className="animate-spin text-[#5bc0de]" size={30} />
-                        </div>
-                    ) : renderCalendar()}
+                <div className="overflow-x-auto">
+                    <div className="min-w-[620px] grid grid-cols-7 border-t border-l border-gray-100">
+                        {['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'].map(day => (
+                            <div key={day} className="bg-[#5bc0de] text-white text-center py-2 text-xs font-bold border-r border-b border-[#46b8da]">
+                                {day}
+                            </div>
+                        ))}
+                        {loading ? (
+                            <div className="col-span-7 h-96 flex items-center justify-center">
+                                <Loader2 className="animate-spin text-[#5bc0de]" size={30} />
+                            </div>
+                        ) : renderCalendar()}
+                    </div>
                 </div>
 
                 {/* Legend */}

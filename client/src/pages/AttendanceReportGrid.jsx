@@ -72,7 +72,7 @@ const AttendanceReportGrid = () => {
 
     return (
         <div className="space-y-6 pb-12">
-            <div className="flex justify-between items-center text-xs text-[#5bc0de]">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-[#5bc0de]">
                 <h1 className="text-xl font-bold text-gray-800">Attendance Report</h1>
                 <div className="flex items-center gap-1">
                     <Calendar size={12} />
@@ -80,21 +80,21 @@ const AttendanceReportGrid = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-sm border border-gray-200 shadow-sm p-6 overflow-hidden">
+            <div className="bg-white rounded-sm border border-gray-200 shadow-sm p-4 sm:p-6 overflow-hidden">
                 {/* Filters */}
-                <div className="flex flex-wrap gap-4 mb-8">
-                    <div className="flex items-center border border-gray-300 rounded-sm">
+                <div className="flex flex-wrap gap-3 sm:gap-4 mb-6">
+                    <div className="flex items-center border border-gray-300 rounded-sm w-full sm:w-auto">
                         <input
                             type="month"
-                            className="px-3 py-1.5 text-sm outline-none"
+                            className="px-3 py-1.5 text-sm outline-none flex-1 sm:w-auto"
                             value={month}
                             onChange={(e) => setMonth(e.target.value)}
                         />
-                        <button className="bg-[#5bc0de] text-white px-4 py-1.5 text-sm font-bold border-l border-[#46b8da]">Go</button>
+                        <button className="bg-[#5bc0de] text-white px-4 py-1.5 text-sm font-bold border-l border-[#46b8da] hover:bg-[#46b8da] transition-colors">Go</button>
                     </div>
 
                     <select
-                        className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 min-w-[200px]"
+                        className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 w-full sm:w-auto min-w-0 sm:min-w-[180px]"
                         value={selectedDept}
                         onChange={(e) => setSelectedDept(e.target.value)}
                     >
@@ -103,7 +103,7 @@ const AttendanceReportGrid = () => {
                     </select>
 
                     <select
-                        className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 min-w-[200px]"
+                        className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 w-full sm:w-auto min-w-0 sm:min-w-[180px]"
                         value={selectedDesig}
                         onChange={(e) => setSelectedDesig(e.target.value)}
                     >
@@ -111,7 +111,7 @@ const AttendanceReportGrid = () => {
                         {allDesigs.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
 
-                    <select className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 min-w-[200px]">
+                    <select className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 w-full sm:w-auto min-w-0 sm:min-w-[180px]">
                         <option>Select Employee</option>
                         {data.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                     </select>
