@@ -125,11 +125,9 @@ const PayrollPage = () => {
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-gray-50 flex justify-between items-center">
                             <h3 className="font-bold text-gray-900">Payment History</h3>
-                            <div className="flex gap-2">
-                                <button className="p-2 border border-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
-                                    <Calendar size={18} />
-                                </button>
-                            </div>
+                            <span className="text-xs font-semibold text-gray-500 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                                {history.length} {history.length === 1 ? 'record' : 'records'}
+                            </span>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">

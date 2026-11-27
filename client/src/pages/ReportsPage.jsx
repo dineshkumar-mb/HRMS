@@ -16,18 +16,21 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 
-const StatCard = ({ title, value, icon: Icon, color, subtitle }) => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <div className="flex justify-between items-start mb-4">
-            <div className={`p-3 rounded-xl ${color} bg-opacity-10`}>
-                <Icon className={color.replace('bg-', 'text-')} size={24} />
+const StatCard = ({ title, value, icon, iconBg, iconText, subtitle }) => {
+    const IconComponent = icon;
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-xl ${iconBg}`}>
+                    <IconComponent className={iconText} size={24} />
+                </div>
             </div>
+            <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+            {subtitle && <p className="text-xs text-gray-400 mt-2">{subtitle}</p>}
         </div>
-        <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
-        <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
-        {subtitle && <p className="text-xs text-gray-400 mt-2">{subtitle}</p>}
-    </div>
-);
+    );
+};
 
 const ReportsPage = () => {
     const [loading, setLoading] = useState(true);
@@ -138,28 +141,32 @@ const ReportsPage = () => {
                         title="Total Employees"
                         value={overview.employees.total}
                         icon={Users}
-                        color="bg-primary-600"
+                        iconBg="bg-primary-50"
+                        iconText="text-primary-600"
                         subtitle={`${overview.employees.active} active`}
                     />
                     <StatCard
                         title="Attendance Rate"
                         value={`${overview.attendance.rate}%`}
                         icon={CalendarCheck}
-                        color="bg-green-600"
+                        iconBg="bg-green-50"
+                        iconText="text-green-600"
                         subtitle={`${overview.attendance.today} present today`}
                     />
                     <StatCard
                         title="Pending Leaves"
                         value={overview.leaves.pending}
                         icon={Clock}
-                        color="bg-orange-600"
+                        iconBg="bg-orange-50"
+                        iconText="text-orange-600"
                         subtitle={`${overview.leaves.approved} approved`}
                     />
                     <StatCard
                         title="Monthly Attendance"
                         value={overview.attendance.monthly}
                         icon={TrendingUp}
-                        color="bg-purple-600"
+                        iconBg="bg-purple-50"
+                        iconText="text-purple-600"
                         subtitle="This month"
                     />
                 </div>

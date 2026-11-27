@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
     Plus,
     Search,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
+import { toast, confirmAction } from '../store/useUIStore';
 
 const EmployeesPage = () => {
     const { user } = useAuthStore();
@@ -41,6 +42,17 @@ const EmployeesPage = () => {
         fetchEmployees();
     }, []);
 
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setShowFilterDropdown(false);
+                if (showModal) handleCloseModal();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [showModal]);
+
     const fetchEmployees = async () => {
         try {
             const { data } = await api.get('/employees');
@@ -57,15 +69,17 @@ const EmployeesPage = () => {
         try {
             if (editingEmployee) {
                 await api.put(`/employees/${editingEmployee._id}`, data);
+                toast.success('Employee updated successfully');
             } else {
                 await api.post('/employees', data);
+                toast.success('Employee added successfully');
             }
             setShowModal(false);
             setEditingEmployee(null);
             reset();
             fetchEmployees();
         } catch (error) {
-            alert(error.response?.data?.message || 'Operation failed');
+            toast.error(error.response?.data?.message || 'Operation failed');
         } finally {
             setActionLoading(false);
         }
@@ -98,14 +112,21 @@ const EmployeesPage = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this employee?')) return;
+        const confirmed = await confirmAction({
+            title: 'Delete Employee',
+            message: 'Are you sure you want to delete this employee? This action cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger'
+        });
+        if (!confirmed) return;
 
         setActionLoading(true);
         try {
             await api.delete(`/employees/${id}`);
+            toast.success('Employee deleted');
             fetchEmployees();
         } catch (error) {
-            alert(error.response?.data?.message || 'Delete failed');
+            toast.error(error.response?.data?.message || 'Delete failed');
         } finally {
             setActionLoading(false);
         }
@@ -131,7 +152,7 @@ const EmployeesPage = () => {
 
     const exportToCSV = () => {
         if (filteredEmployees.length === 0) {
-            alert('No employees to export');
+            toast.warning('No employees to export');
             return;
         }
 
@@ -248,66 +269,73 @@ const EmployeesPage = () => {
                         </button>
 
                         {showFilterDropdown && (
-                            <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-10">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-gray-900">Filters</h3>
-                                    {activeFilterCount > 0 && (
-                                        <button
-                                            onClick={clearFilters}
-                                            className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                                        >
-                                            Clear all
-                                        </button>
-                                    )}
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setShowFilterDropdown(false)}
+                                    aria-hidden="true"
+                                />
+                                <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-20 animate-zoom-in">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="font-bold text-gray-900">Filters</h3>
+                                        {activeFilterCount > 0 && (
+                                            <button
+                                                onClick={clearFilters}
+                                                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                                            >
+                                                Clear all
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 mb-2">Department</label>
+                                            <select
+                                                value={filters.department}
+                                                onChange={(e) => handleFilterChange('department', e.target.value)}
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            >
+                                                {departments.map(dept => (
+                                                    <option key={dept} value={dept} className="capitalize">
+                                                        {dept === 'all' ? 'All Departments' : dept}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 mb-2">Designation</label>
+                                            <select
+                                                value={filters.designation}
+                                                onChange={(e) => handleFilterChange('designation', e.target.value)}
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            >
+                                                {designations.map(desig => (
+                                                    <option key={desig} value={desig} className="capitalize">
+                                                        {desig === 'all' ? 'All Designations' : desig}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-700 mb-2">Status</label>
+                                            <select
+                                                value={filters.status}
+                                                onChange={(e) => handleFilterChange('status', e.target.value)}
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                            >
+                                                {statuses.map(status => (
+                                                    <option key={status} value={status} className="capitalize">
+                                                        {status === 'all' ? 'All Statuses' : status}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 mb-2">Department</label>
-                                        <select
-                                            value={filters.department}
-                                            onChange={(e) => handleFilterChange('department', e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                        >
-                                            {departments.map(dept => (
-                                                <option key={dept} value={dept} className="capitalize">
-                                                    {dept === 'all' ? 'All Departments' : dept}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 mb-2">Designation</label>
-                                        <select
-                                            value={filters.designation}
-                                            onChange={(e) => handleFilterChange('designation', e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                        >
-                                            {designations.map(desig => (
-                                                <option key={desig} value={desig} className="capitalize">
-                                                    {desig === 'all' ? 'All Designations' : desig}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-semibold text-gray-700 mb-2">Status</label>
-                                        <select
-                                            value={filters.status}
-                                            onChange={(e) => handleFilterChange('status', e.target.value)}
-                                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                        >
-                                            {statuses.map(status => (
-                                                <option key={status} value={status} className="capitalize">
-                                                    {status === 'all' ? 'All Statuses' : status}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>
@@ -400,19 +428,24 @@ const EmployeesPage = () => {
 
             {/* Add/Edit Modal */}
             {showModal && canManage && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl p-8 shadow-2xl scale-in max-h-[90vh] overflow-y-auto">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="employee-modal-title"
+                >
+                    <div className="bg-white rounded-2xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl animate-zoom-in max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-900">
+                            <h3 id="employee-modal-title" className="text-xl font-bold text-gray-900">
                                 {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
                             </h3>
-                            <button onClick={handleCloseModal} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <button type="button" onClick={handleCloseModal} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Close employee modal">
                                 <X size={20} />
                             </button>
                         </div>
 
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
                                     <input
@@ -436,7 +469,7 @@ const EmployeesPage = () => {
                                 <input
                                     {...register('email', {
                                         required: true,
-                                        pattern: /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/
+                                        pattern: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
                                     })}
                                     className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500"
                                     placeholder="john.doe@company.com"
@@ -457,7 +490,7 @@ const EmployeesPage = () => {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
                                     <select
@@ -489,7 +522,7 @@ const EmployeesPage = () => {
                                 ></textarea>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Employee ID</label>
                                     <input
@@ -508,7 +541,7 @@ const EmployeesPage = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Designation</label>
                                     <input
@@ -550,7 +583,7 @@ const EmployeesPage = () => {
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
                                     <input
@@ -583,7 +616,7 @@ const EmployeesPage = () => {
 
                             <div className="pt-4 border-t border-gray-100">
                                 <h4 className="text-sm font-bold text-gray-900 mb-4">Salary Details (Monthly)</h4>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-500 mb-1">Basic Salary</label>
                                         <input

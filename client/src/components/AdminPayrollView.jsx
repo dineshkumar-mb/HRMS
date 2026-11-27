@@ -12,6 +12,7 @@ import {
     Loader2
 } from 'lucide-react';
 import api from '../services/api';
+import { toast, confirmAction } from '../store/useUIStore';
 
 const AdminPayrollView = ({ onOpenSlip }) => {
     const [loading, setLoading] = useState(true);
@@ -40,18 +41,55 @@ const AdminPayrollView = ({ onOpenSlip }) => {
     };
 
     const handleGenerate = async () => {
-        if (!window.confirm(`Generate payroll for all employees for ${months[date.month - 1]} ${date.year}?`)) return;
+        const confirmed = await confirmAction({
+            title: 'Process Payroll',
+            message: `Generate payroll for all employees for ${months[date.month - 1]} ${date.year}?`,
+            confirmText: 'Process Payroll',
+            variant: 'primary'
+        });
+        if (!confirmed) return;
 
         try {
             setGenerating(true);
             await api.post('/payroll/generate', { month: date.month, year: date.year });
-            alert('Payroll generated successfully!');
+            toast.success('Payroll generated successfully');
             fetchAllPayroll();
         } catch (error) {
-            alert(error.response?.data?.message || 'Generation failed');
+            toast.error(error.response?.data?.message || 'Generation failed');
         } finally {
             setGenerating(false);
         }
+    };
+
+    const handleExportAll = () => {
+        if (filteredData.length === 0) {
+            toast.warning('No payroll records to export');
+            return;
+        }
+        const headers = ['Employee ID', 'Employee Name', 'Month', 'Year', 'Status', 'Basic Salary', 'Net Salary'];
+        const rows = filteredData.map(pay => [
+            pay.employee.employeeId,
+            `${pay.employee.firstName} ${pay.employee.lastName}`,
+            months[date.month - 1],
+            date.year,
+            pay.status,
+            pay.salaryComponents.basic,
+            pay.netSalary
+        ]);
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `payroll_${months[date.month - 1]}_${date.year}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Payroll exported to CSV');
     };
 
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -80,8 +118,10 @@ const AdminPayrollView = ({ onOpenSlip }) => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
                     <button
+                        type="button"
                         onClick={() => changeMonth(-1)}
                         className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 transition-colors"
+                        aria-label="Previous month"
                     >
                         <ChevronLeft size={20} />
                     </button>
@@ -90,15 +130,18 @@ const AdminPayrollView = ({ onOpenSlip }) => {
                         <span className="text-lg font-black text-gray-900 leading-none">{months[date.month - 1]}</span>
                     </div>
                     <button
+                        type="button"
                         onClick={() => changeMonth(1)}
                         className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 transition-colors"
+                        aria-label="Next month"
                     >
                         <ChevronRight size={20} />
                     </button>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button
+                        type="button"
                         onClick={handleGenerate}
                         disabled={generating}
                         className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 disabled:opacity-50"
@@ -106,7 +149,11 @@ const AdminPayrollView = ({ onOpenSlip }) => {
                         {generating ? <Loader2 className="animate-spin" size={18} /> : <RefreshCcw size={18} />}
                         Process Payroll
                     </button>
-                    <button className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all shadow-sm">
+                    <button
+                        type="button"
+                        onClick={handleExportAll}
+                        className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 transition-all shadow-sm"
+                    >
                         <Download size={18} />
                         Export All
                     </button>

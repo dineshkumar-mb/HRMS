@@ -101,6 +101,7 @@ const ChangePasswordPage = () => {
                                     type="button"
                                     onClick={() => togglePasswordVisibility('current')}
                                     className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                    aria-label={showPasswords.current ? 'Hide current password' : 'Show current password'}
                                 >
                                     {showPasswords.current ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
@@ -126,6 +127,7 @@ const ChangePasswordPage = () => {
                                     type="button"
                                     onClick={() => togglePasswordVisibility('new')}
                                     className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                    aria-label={showPasswords.new ? 'Hide new password' : 'Show new password'}
                                 >
                                     {showPasswords.new ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
@@ -150,6 +152,7 @@ const ChangePasswordPage = () => {
                                     type="button"
                                     onClick={() => togglePasswordVisibility('confirm')}
                                     className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                    aria-label={showPasswords.confirm ? 'Hide confirm password' : 'Show confirm password'}
                                 >
                                     {showPasswords.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>

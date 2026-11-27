@@ -17,8 +17,10 @@ import {
     Info,
     AlertTriangle,
     AlertCircle as AlertIcon,
-    Trash,
-    CalendarClock
+    Trash2,
+    CalendarClock,
+    ChevronDown,
+    ClipboardCheck
 } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 import api from '../services/api';
@@ -41,17 +43,23 @@ const DashboardLayout = () => {
     const location = useLocation();
 
     useEffect(() => {
-        fetchNotifications();
-        const interval = setInterval(fetchNotifications, 60000); // Poll every minute
-        return () => clearInterval(interval);
+        let active = true;
+        const loadNotifications = async () => {
+            try {
+                const { data } = await api.get('/notifications');
+                if (active) setNotifications(data.data);
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+            }
+        };
+        loadNotifications();
+        const interval = setInterval(loadNotifications, 60000);
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
     }, []);
 
-    // Close mobile menu on route change
-    useEffect(() => {
-        setMobileMenuOpen(false);
-    }, [location.pathname]);
-
-    // Close on Escape key
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
@@ -62,15 +70,6 @@ const DashboardLayout = () => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
-
-    const fetchNotifications = async () => {
-        try {
-            const { data } = await api.get('/notifications');
-            setNotifications(data.data);
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
-        }
-    };
 
     const markAsRead = async (id) => {
         try {
@@ -107,21 +106,35 @@ const DashboardLayout = () => {
         navigate('/login');
     };
 
+    const isAdminOrHR = user && ['admin', 'hr'].includes(user.role);
+
     const navItems = [
         { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
         { name: 'Personnel Directory', icon: Users, path: '/employees', roles: ['admin', 'hr', 'manager'] },
-        { name: 'Attendance Management', icon: CalendarCheck, path: '/attendance-management', subItems: true },
-        { name: 'Attendance Requests', icon: CalendarClock, path: '/attendance-management/manage-requests', roles: ['admin', 'hr'] },
-        { name: 'Leave Management', icon: CalendarDays, path: '/leaves', subItems: true },
         {
-            name: 'Assessment Management',
-            icon: BarChart3,
+            name: 'Attendance',
+            icon: CalendarCheck,
+            path: '/attendance-management',
+            subItems: [
+                { name: 'Overview', path: '/attendance-management' },
+                { name: 'Attendance Calendar', path: '/attendance-management/calendar' },
+                { name: 'Detailed Punch Log', path: '/attendance-management/log' },
+                ...(isAdminOrHR ? [
+                    { name: 'Manage Requests', path: '/attendance-management/manage-requests' },
+                    { name: 'Attendance Report', path: '/attendance-management/report' }
+                ] : []),
+            ]
+        },
+        { name: 'Leave Management', icon: CalendarDays, path: '/leaves' },
+        {
+            name: 'Assessments',
+            icon: ClipboardCheck,
             path: '/assessments',
             subItems: [
                 { name: 'Self-Assessment', path: '/assessments' }
             ]
         },
-        { name: 'Salary Slip', icon: Wallet, path: '/payroll', subItems: true },
+        { name: 'Salary & Payroll', icon: Wallet, path: '/payroll', roles: ['admin', 'hr', 'manager', 'employee'] },
         { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin', 'hr'] },
         { name: 'Profile', icon: UserIcon, path: '/profile' },
         { name: 'Change Password', icon: Settings, path: '/change-password' },
@@ -131,18 +144,58 @@ const DashboardLayout = () => {
         !item.roles || (user && item.roles.includes(user.role))
     );
 
+    const isPathActive = (item) => {
+        if (item.path === '/') return location.pathname === '/';
+        if (item.subItems) {
+            return item.subItems.some(sub => location.pathname === sub.path);
+        }
+        if (item.path === '/profile') {
+            return location.pathname.startsWith('/profile');
+        }
+        return location.pathname === item.path;
+    };
+
+    const getPageTitle = () => {
+        const path = location.pathname;
+        if (path === '/') return 'Dashboard';
+        if (path.startsWith('/employees')) return 'Personnel Directory';
+        if (path === '/attendance-management') return 'Attendance Management';
+        if (path === '/attendance-management/calendar') return 'Attendance Calendar';
+        if (path === '/attendance-management/log') return 'My Attendance Log';
+        if (path === '/attendance-management/manage-requests') return 'Attendance Requests';
+        if (path === '/attendance-management/report') return 'Attendance Report';
+        if (path.startsWith('/leaves')) return 'Leave Management';
+        if (path.startsWith('/assessments')) return 'Self-Assessment';
+        if (path.startsWith('/payroll')) return 'Salary & Payroll';
+        if (path.startsWith('/reports')) return 'Reports & Analytics';
+        if (path.startsWith('/profile')) return 'Profile';
+        if (path.startsWith('/change-password')) return 'Security Settings';
+        return 'Dashboard';
+    };
+
+    const displayName = user?.employee?.firstName
+        ? `${user.employee.firstName} ${user.employee.lastName || ''}`.trim()
+        : user?.email;
+
     const renderSidebarContent = (isCollapsed = false, isMobile = false) => (
-        <div className="flex flex-col h-full bg-[#777777] select-none text-white">
+        <div className="flex flex-col h-full bg-slate-900 select-none text-slate-200">
             {/* Sidebar Brand Header */}
-            <div className="h-16 flex items-center justify-between px-4 sm:px-6 bg-[#5bc0de] text-white shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
-                    <LayoutDashboard size={20} className="shrink-0" />
-                    {!isCollapsed && <span className="text-lg font-bold italic tracking-wider truncate">HRMS PORTAL</span>}
-                </div>
+            <div className="h-16 flex items-center justify-between px-4 sm:px-5 border-b border-slate-800 shrink-0">
+                <Link to="/" className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-primary-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-primary-950/50 shrink-0">
+                        H
+                    </div>
+                    {!isCollapsed && (
+                        <span className="text-base font-extrabold tracking-tight text-white truncate">
+                            HRMS Portal
+                        </span>
+                    )}
+                </Link>
                 {isMobile && (
                     <button
+                        type="button"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors focus:outline-none"
+                        className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                         aria-label="Close menu"
                     >
                         <X size={20} />
@@ -151,77 +204,104 @@ const DashboardLayout = () => {
             </div>
 
             {/* Navigation links */}
-            <nav className="flex-1 px-0 py-0 space-y-0 overflow-y-auto bg-[#777777]">
-                {filteredNavItems.map((item) => (
-                    <div key={item.path}>
-                        <div
-                            onClick={() => {
-                                if (item.subItems && Array.isArray(item.subItems)) {
-                                    setExpandedMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }));
-                                } else {
-                                    navigate(item.path);
-                                    if (isMobile) setMobileMenuOpen(false);
-                                }
-                            }}
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" aria-label="Main navigation">
+                {filteredNavItems.map((item) => {
+                    const active = isPathActive(item);
+                    const hasSub = Array.isArray(item.subItems) && item.subItems.length > 0;
+                    const isExpanded = expandedMenus[item.name] ?? active;
+
+                    if (hasSub && !isCollapsed) {
+                        return (
+                            <div key={item.name} className="space-y-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setExpandedMenus(prev => ({ ...prev, [item.name]: !isExpanded }))}
+                                    aria-expanded={isExpanded}
+                                    className={cn(
+                                        "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                                        active
+                                            ? "bg-primary-600/15 text-primary-400 font-semibold"
+                                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <item.icon size={18} className="shrink-0" />
+                                        <span className="truncate">{item.name}</span>
+                                    </div>
+                                    <ChevronDown
+                                        size={15}
+                                        className={cn(
+                                            "transition-transform duration-200 shrink-0",
+                                            isExpanded ? "rotate-180" : ""
+                                        )}
+                                    />
+                                </button>
+                                {isExpanded && (
+                                    <div className="pl-9 space-y-1">
+                                        {item.subItems.map((sub) => {
+                                            const subActive = location.pathname === sub.path;
+                                            return (
+                                                <Link
+                                                    key={sub.path}
+                                                    to={sub.path}
+                                                    onClick={() => { if (isMobile) setMobileMenuOpen(false); }}
+                                                    className={cn(
+                                                        "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                                                        subActive
+                                                            ? "bg-primary-600 text-white font-semibold shadow-sm"
+                                                            : "text-slate-400 hover:text-white hover:bg-slate-800"
+                                                    )}
+                                                >
+                                                    <span className={cn(
+                                                        "w-1.5 h-1.5 rounded-full shrink-0",
+                                                        subActive ? "bg-white" : "bg-slate-600"
+                                                    )} />
+                                                    <span className="truncate">{sub.name}</span>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <Link
+                            key={item.path}
+                            to={item.path}
+                            onClick={() => { if (isMobile) setMobileMenuOpen(false); }}
+                            title={isCollapsed ? item.name : undefined}
                             className={cn(
-                                "flex items-center justify-between px-4 py-3 transition-all border-b border-[#888888] text-white hover:bg-[#666666] cursor-pointer",
-                                location.pathname === item.path && !Array.isArray(item.subItems)
-                                    ? "bg-[#5bc0de]"
-                                    : "",
+                                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                                active
+                                    ? "bg-primary-600 text-white font-semibold shadow-md shadow-primary-950/30"
+                                    : "text-slate-300 hover:bg-slate-800 hover:text-white",
                                 isCollapsed && "justify-center px-2"
                             )}
-                            title={isCollapsed ? item.name : undefined}
                         >
-                            <div className="flex items-center gap-3 min-w-0">
-                                <item.icon size={18} className="shrink-0" />
-                                {!isCollapsed && <span className="text-sm font-medium truncate">{item.name}</span>}
-                            </div>
-                            {!isCollapsed && item.subItems && (
-                                <span className={cn(
-                                    "text-[10px] transition-transform duration-200 shrink-0",
-                                    expandedMenus[item.name] ? "rotate-90" : ""
-                                )}>❮</span>
-                            )}
-                        </div>
-                        {!isCollapsed && item.subItems && Array.isArray(item.subItems) && expandedMenus[item.name] && (
-                            <div className="bg-[#555555]">
-                                {item.subItems.map((sub) => (
-                                    <Link
-                                        key={sub.path}
-                                        to={sub.path}
-                                        onClick={() => { if (isMobile) setMobileMenuOpen(false); }}
-                                        className={cn(
-                                            "flex items-center gap-3 pl-12 py-2 text-xs text-gray-300 hover:text-white hover:bg-[#444444] transition-all",
-                                            location.pathname === sub.path ? "text-[#5bc0de] font-bold" : ""
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            "w-1.5 h-1.5 rounded-full border border-current",
-                                            location.pathname === sub.path ? "bg-[#5bc0de]" : ""
-                                        )} />
-                                        <span className="truncate">{sub.name}</span>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                ))}
+                            <item.icon size={18} className="shrink-0" />
+                            {!isCollapsed && <span className="truncate">{item.name}</span>}
+                        </Link>
+                    );
+                })}
             </nav>
 
             {/* Logout bottom button */}
-            <div className="p-4 border-t border-[#888888] bg-[#666666] shrink-0">
+            <div className="p-3 border-t border-slate-800 shrink-0">
                 <button
+                    type="button"
                     onClick={() => {
                         if (isMobile) setMobileMenuOpen(false);
                         handleLogout();
                     }}
                     className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-white hover:bg-red-600/80 transition-all w-full group",
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-red-500/15 hover:text-red-400 transition-all w-full",
                         isCollapsed && "justify-center px-2"
                     )}
                     title={isCollapsed ? "Logout" : undefined}
                 >
-                    <LogOut size={20} className="shrink-0" />
+                    <LogOut size={18} className="shrink-0" />
                     {!isCollapsed && <span className="font-medium text-sm">Logout</span>}
                 </button>
             </div>
@@ -229,7 +309,7 @@ const DashboardLayout = () => {
     );
 
     return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <div className="flex h-screen bg-slate-50 overflow-hidden">
             {/* Mobile Drawer Backdrop */}
             {mobileMenuOpen && (
                 <div
@@ -252,7 +332,7 @@ const DashboardLayout = () => {
             {/* Desktop Persistent Sidebar */}
             <aside
                 className={cn(
-                    "hidden md:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 z-30 shrink-0",
+                    "hidden md:flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 z-30 shrink-0",
                     isDesktopCollapsed ? "w-20" : "w-64"
                 )}
             >
@@ -262,12 +342,13 @@ const DashboardLayout = () => {
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
                 {/* Topbar Header */}
-                <header className="h-16 bg-[#5bc0de] flex items-center justify-between px-3 sm:px-6 z-20 text-white shrink-0">
-                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 sm:px-6 z-20 text-slate-900 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         {/* Mobile Hamburger Button */}
                         <button
+                            type="button"
                             onClick={() => setMobileMenuOpen(true)}
-                            className="p-2 -ml-1 rounded-lg hover:bg-white/15 text-white md:hidden transition-colors focus:outline-none"
+                            className="p-2 -ml-1 rounded-xl hover:bg-slate-100 text-slate-600 md:hidden transition-colors"
                             aria-label="Open menu"
                         >
                             <Menu size={22} />
@@ -275,16 +356,17 @@ const DashboardLayout = () => {
 
                         {/* Desktop Collapse Toggle Button */}
                         <button
+                            type="button"
                             onClick={() => setIsDesktopCollapsed(prev => !prev)}
-                            className="hidden md:inline-flex p-2 -ml-2 rounded-lg hover:bg-white/15 text-white transition-colors focus:outline-none"
+                            className="hidden md:inline-flex p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"
                             title={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                            aria-label="Toggle sidebar"
+                            aria-label={isDesktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                         >
                             <Menu size={20} />
                         </button>
 
-                        <h2 className="text-base sm:text-xl font-bold tracking-tight truncate">
-                            {filteredNavItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
+                        <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 truncate">
+                            {getPageTitle()}
                         </h2>
                     </div>
 
@@ -292,13 +374,15 @@ const DashboardLayout = () => {
                         {/* Notification Bell */}
                         <div className="relative">
                             <button
+                                type="button"
                                 onClick={() => setShowNotifications(!showNotifications)}
-                                className="p-2 rounded-lg hover:bg-white/15 text-white relative transition-colors focus:outline-none"
-                                aria-label="Notifications"
+                                className="p-2 rounded-xl hover:bg-slate-100 text-slate-600 relative transition-colors"
+                                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+                                aria-expanded={showNotifications}
                             >
                                 <Bell size={20} />
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-[#5bc0de] flex items-center justify-center animate-pulse">
+                                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center">
                                         {unreadCount > 9 ? '9+' : unreadCount}
                                     </span>
                                 )}
@@ -309,14 +393,16 @@ const DashboardLayout = () => {
                                     <div
                                         className="fixed inset-0 z-30"
                                         onClick={() => setShowNotifications(false)}
-                                    ></div>
-                                    <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-100 z-40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                        <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-                                            <h3 className="font-bold text-gray-900 text-sm">Notifications</h3>
+                                        aria-hidden="true"
+                                    />
+                                    <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 z-40 overflow-hidden animate-zoom-in">
+                                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                                            <h3 className="font-bold text-slate-900 text-sm">Notifications</h3>
                                             {unreadCount > 0 && (
                                                 <button
+                                                    type="button"
                                                     onClick={markAllAsRead}
-                                                    className="text-[10px] text-primary-600 hover:text-primary-700 font-bold uppercase tracking-wider"
+                                                    className="text-xs text-primary-600 hover:text-primary-700 font-semibold"
                                                 >
                                                     Mark all as read
                                                 </button>
@@ -325,22 +411,25 @@ const DashboardLayout = () => {
                                         <div className="max-h-[360px] overflow-y-auto">
                                             {notifications.length === 0 ? (
                                                 <div className="p-8 text-center">
-                                                    <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                        <Bell className="text-gray-300" size={24} />
+                                                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                        <Bell className="text-slate-300" size={24} />
                                                     </div>
-                                                    <p className="text-gray-500 text-sm">No notifications yet</p>
+                                                    <p className="text-slate-500 text-sm">No notifications yet</p>
                                                 </div>
                                             ) : (
-                                                <div className="divide-y divide-gray-50">
+                                                <div className="divide-y divide-slate-100">
                                                     {notifications.map((n) => (
                                                         <div
                                                             key={n._id}
-                                                            onClick={() => markAsRead(n._id)}
-                                                            className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group ${!n.read ? 'bg-primary-50/20' : ''}`}
+                                                            className={`p-4 hover:bg-slate-50 transition-colors relative flex gap-3 items-start ${!n.read ? 'bg-primary-50/40' : ''}`}
                                                         >
-                                                            <div className="flex gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => markAsRead(n._id)}
+                                                                className="flex gap-3 flex-1 min-w-0 text-left"
+                                                            >
                                                                 <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.type === 'success' ? 'bg-green-50 text-green-600' :
-                                                                    n.type === 'warning' ? 'bg-yellow-50 text-yellow-600' :
+                                                                    n.type === 'warning' ? 'bg-amber-50 text-amber-600' :
                                                                         n.type === 'error' ? 'bg-red-50 text-red-600' :
                                                                             'bg-blue-50 text-blue-600'
                                                                     }`}>
@@ -350,26 +439,30 @@ const DashboardLayout = () => {
                                                                     {n.type === 'info' && <Info size={16} />}
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
-                                                                    <p className={`text-sm ${!n.read ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
+                                                                    <p className={`text-sm ${!n.read ? 'font-bold text-slate-900' : 'text-slate-700'}`}>
                                                                         {n.title}
                                                                     </p>
-                                                                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                                                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
                                                                         {n.message}
                                                                     </p>
-                                                                    <p className="text-[10px] text-gray-400 mt-1 font-medium">
+                                                                    <p className="text-[11px] text-slate-400 mt-1 font-medium">
                                                                         {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                                                                     </p>
                                                                 </div>
+                                                            </button>
+                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                {!n.read && (
+                                                                    <span className="w-2 h-2 bg-primary-600 rounded-full" aria-label="Unread" />
+                                                                )}
                                                                 <button
+                                                                    type="button"
                                                                     onClick={(e) => deleteNotification(n._id, e)}
-                                                                    className="p-1.5 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                                    className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                                                                    aria-label="Delete notification"
                                                                 >
-                                                                    <Trash size={14} />
+                                                                    <Trash2 size={14} />
                                                                 </button>
                                                             </div>
-                                                            {!n.read && (
-                                                                <span className="absolute top-4 right-10 w-2 h-2 bg-primary-600 rounded-full"></span>
-                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -381,20 +474,27 @@ const DashboardLayout = () => {
                         </div>
 
                         {/* Profile User Badge */}
-                        <Link to="/profile" className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-white/20 hover:opacity-90 transition-opacity">
-                            <div className="text-right hidden sm:block max-w-[150px]">
-                                <p className="text-sm font-semibold text-white truncate">{user?.email}</p>
-                                <p className="text-xs text-white/80 capitalize">{user?.role}</p>
+                        <Link
+                            to="/profile"
+                            className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-slate-200 hover:opacity-85 transition-opacity"
+                        >
+                            <div className="text-right hidden sm:block max-w-[160px]">
+                                <p className="text-sm font-semibold text-slate-900 truncate">{displayName}</p>
+                                <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
                             </div>
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center text-white border border-white/30 shrink-0">
-                                <UserIcon size={18} />
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100 shrink-0 font-bold text-sm">
+                                {user?.employee?.firstName ? (
+                                    <span>{user.employee.firstName[0]}{user.employee.lastName?.[0] || ''}</span>
+                                ) : (
+                                    <UserIcon size={18} />
+                                )}
                             </div>
                         </Link>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 min-w-0">
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 min-w-0">
                     <Outlet />
                 </main>
             </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     User as UserIcon,
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
+import { toast, confirmAction } from '../store/useUIStore';
 import FaceEnrollment from '../features/auth/FaceEnrollment';
 
 const ProfilePage = () => {
@@ -42,12 +43,25 @@ const ProfilePage = () => {
     const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
     const [qrCode, setQrCode] = useState('');
     const [twoFactorCode, setTwoFactorCode] = useState('');
-    const [twoFactorSecret, setTwoFactorSecret] = useState('');
     const [twoFactorLoading, setTwoFactorLoading] = useState(false);
     const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
 
     const isAdmin = ['admin', 'hr'].includes(authUser?.role);
-    const isOwnProfile = !id || id === authUser?.employee;
+    const authEmpId = typeof authUser?.employee === 'object' ? authUser?.employee?._id : authUser?.employee;
+    const isOwnProfile = !id || (authEmpId && id === authEmpId);
+    const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setShowPasswordModal(false);
+                setShowFaceModal(false);
+                setShowTwoFactorModal(false);
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, []);
 
     useEffect(() => {
         fetchProfile();
@@ -87,7 +101,7 @@ const ProfilePage = () => {
             }
         } catch (error) {
             console.error('Error fetching profile:', error);
-            alert('Failed to load profile');
+            toast.error('Failed to load profile');
         } finally {
             setLoading(false);
         }
@@ -98,10 +112,9 @@ const ProfilePage = () => {
             setTwoFactorLoading(true);
             const { data } = await api.post('/auth/2fa/generate');
             setQrCode(data.qrCode);
-            setTwoFactorSecret(data.secret);
             setShowTwoFactorModal(true);
-        } catch (err) {
-            alert('Failed to generate 2FA secret');
+        } catch {
+            toast.error('Failed to generate 2FA secret');
         } finally {
             setTwoFactorLoading(false);
         }
@@ -114,28 +127,34 @@ const ProfilePage = () => {
             setIsTwoFactorEnabled(true);
             setShowTwoFactorModal(false);
             setTwoFactorCode('');
-            alert('Two-Factor Authentication Enabled Successfully!');
-            fetchProfile(); // Refresh profile to sync state
+            toast.success('Two-Factor Authentication enabled successfully');
+            fetchProfile();
         } catch (err) {
-            alert(err.response?.data?.message || 'Invalid Code');
+            toast.error(err.response?.data?.message || 'Invalid verification code');
         } finally {
             setTwoFactorLoading(false);
         }
     };
 
     const handleDisable2FA = async () => {
-        if (window.confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) {
-            try {
-                setTwoFactorLoading(true);
-                await api.post('/auth/2fa/disable');
-                setIsTwoFactorEnabled(false);
-                alert('Two-Factor Authentication Disabled');
-                fetchProfile();
-            } catch (err) {
-                alert('Failed to disable 2FA');
-            } finally {
-                setTwoFactorLoading(false);
-            }
+        const confirmed = await confirmAction({
+            title: 'Disable Two-Factor Authentication',
+            message: 'Are you sure you want to disable 2FA? This will make your account less secure.',
+            confirmText: 'Disable 2FA',
+            variant: 'danger'
+        });
+        if (!confirmed) return;
+
+        try {
+            setTwoFactorLoading(true);
+            await api.post('/auth/2fa/disable');
+            setIsTwoFactorEnabled(false);
+            toast.info('Two-Factor Authentication disabled');
+            fetchProfile();
+        } catch {
+            toast.error('Failed to disable 2FA');
+        } finally {
+            setTwoFactorLoading(false);
         }
     };
 
@@ -146,30 +165,37 @@ const ProfilePage = () => {
             await api.put(`/employees/${employeeId}`, formData);
             await fetchProfile();
             setIsEditing(false);
-            alert('Profile updated successfully');
+            toast.success('Profile updated successfully');
         } catch (error) {
             console.error('Error updating profile:', error);
-            alert(error.response?.data?.message || 'Update failed');
+            toast.error(error.response?.data?.message || 'Update failed');
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('Are you sure you want to delete this employee? This action cannot be undone.')) return;
+        const confirmed = await confirmAction({
+            title: 'Delete Employee',
+            message: 'Are you sure you want to delete this employee? This action cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger'
+        });
+        if (!confirmed) return;
+
         try {
             await api.delete(`/employees/${profile.employee._id}`);
-            alert('Employee deleted');
+            toast.success('Employee deleted');
             navigate('/employees');
-        } catch (error) {
-            alert('Delete failed');
+        } catch {
+            toast.error('Delete failed');
         }
     };
 
     const handlePasswordChange = async (e) => {
         e.preventDefault();
         if (passwordData.newPassword !== passwordData.confirmPassword) {
-            return alert('New passwords do not match');
+            return toast.error('New passwords do not match');
         }
         try {
             setPasswordLoading(true);
@@ -177,14 +203,34 @@ const ProfilePage = () => {
                 currentPassword: passwordData.currentPassword,
                 newPassword: passwordData.newPassword
             });
-            alert('Password changed successfully');
+            toast.success('Password changed successfully');
             setShowPasswordModal(false);
             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         } catch (error) {
-            alert(error.response?.data?.message || 'Failed to change password');
+            toast.error(error.response?.data?.message || 'Failed to change password');
         } finally {
             setPasswordLoading(false);
         }
+    };
+
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('Image must be smaller than 2MB');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            try {
+                await api.put(`/employees/${profile.employee._id}`, { profilePhoto: reader.result });
+                toast.success('Profile photo updated');
+                fetchProfile();
+            } catch (err) {
+                toast.error(err.response?.data?.message || 'Failed to update profile photo');
+            }
+        };
+        reader.readAsDataURL(file);
     };
 
     if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-primary-600" size={40} /></div>;
@@ -214,8 +260,10 @@ const ProfilePage = () => {
                             </button>
                             {authUser.role === 'admin' && !isOwnProfile && (
                                 <button
+                                    type="button"
                                     onClick={handleDelete}
                                     className="flex items-center gap-2 px-5 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-2xl font-bold hover:bg-red-100 transition-all active:scale-95"
+                                    aria-label="Delete employee"
                                 >
                                     <Trash2 size={18} />
                                 </button>
@@ -259,9 +307,23 @@ const ProfilePage = () => {
                                 </div>
                             )}
                         </div>
-                        <button className="absolute bottom-0 right-0 p-2.5 bg-primary-600 text-white rounded-2xl shadow-lg border-4 border-white hover:bg-primary-700 transition-all transform hover:scale-110 active:scale-95">
-                            <Camera size={18} />
-                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                        />
+                        {(isAdmin || authUser?.role === 'manager') && (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="absolute bottom-0 right-0 p-2.5 bg-primary-600 text-white rounded-2xl shadow-lg border-4 border-white hover:bg-primary-700 transition-all transform hover:scale-110 active:scale-95"
+                                aria-label="Upload profile photo"
+                            >
+                                <Camera size={18} />
+                            </button>
+                        )}
                     </div>
 
                     <div className="text-center w-full space-y-4">
@@ -507,7 +569,7 @@ const ProfilePage = () => {
                     <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in slide-in-from-bottom-4 duration-300">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-2xl font-bold text-gray-900">Change Password</h3>
-                            <button onClick={() => setShowPasswordModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                            <button type="button" onClick={() => setShowPasswordModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors" aria-label="Close change password modal">
                                 <X size={20} />
                             </button>
                         </div>
@@ -577,7 +639,7 @@ const ProfilePage = () => {
                                 <Shield className="text-purple-600" />
                                 Setup 2FA
                             </h3>
-                            <button onClick={() => setShowTwoFactorModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                            <button type="button" onClick={() => setShowTwoFactorModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors" aria-label="Close 2FA modal">
                                 <X size={20} />
                             </button>
                         </div>

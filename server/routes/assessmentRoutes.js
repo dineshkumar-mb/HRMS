@@ -99,9 +99,20 @@ router.get('/', protect, async (req, res) => {
         // So we first fetch all employees, then find assessments for them
         // This is simplified for the list view
 
-        if (req.user.role === 'admin' || req.user.role === 'hr') {
-            // Fetch all employees first and populate reporting manager
-            const employees = await Employee.find({ status: 'active' })
+        if (req.user.role === 'admin' || req.user.role === 'hr' || req.user.role === 'manager') {
+            const empQuery = { status: 'active' };
+            if (req.user.role === 'manager') {
+                const managerEmp = await Employee.findOne({ email: req.user.email });
+                if (managerEmp) {
+                    empQuery.$or = [
+                        { reportingManager: managerEmp._id },
+                        { _id: managerEmp._id }
+                    ];
+                }
+            }
+
+            // Fetch matching employees and populate reporting manager
+            const employees = await Employee.find(empQuery)
                 .select('firstName lastName department designation reportingManager status employeeId dateOfJoining')
                 .populate('reportingManager', 'firstName lastName');
 

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import {
@@ -13,11 +13,21 @@ import {
     Loader2
 } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
+import { toast } from '../store/useUIStore';
 
 const PayrollModal = ({ isOpen, onClose, payroll }) => {
     const slipRef = useRef();
     const [downloading, setDownloading] = React.useState(false);
     const { user } = useAuthStore();
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, onClose]);
 
     if (!isOpen || !payroll) return null;
 
@@ -176,7 +186,7 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
 
         } catch (error) {
             console.error('Detailed PDF Generation Error:', error);
-            alert(`Failed to generate PDF: ${error.message || 'Unknown error'}. Please try again.`);
+            toast.error(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
         } finally {
             if (document.body.contains(container)) {
                 document.body.removeChild(container);
@@ -197,8 +207,10 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
                 {/* Header */}
                 <div className="bg-gradient-to-r from-primary-600 to-indigo-600 p-8 text-white relative">
                     <button
+                        type="button"
                         onClick={onClose}
                         className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/20 transition-colors"
+                        aria-label="Close salary slip"
                         data-html2canvas-ignore
                     >
                         <X size={20} />

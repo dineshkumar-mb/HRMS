@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -48,11 +48,25 @@ const SupportModal = ({ isOpen, onClose }) => {
         }
     };
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, onClose]);
+
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-300">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="support-modal-title"
+        >
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-zoom-in max-h-[90vh] overflow-y-auto">
                 <div className="h-2 bg-gradient-to-r from-primary-600 to-primary-400"></div>
 
                 <div className="p-6 flex justify-between items-center border-b border-gray-50 bg-gray-50/30">
@@ -61,13 +75,15 @@ const SupportModal = ({ isOpen, onClose }) => {
                             <LifeBuoy size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900">Contact IT Support</h2>
+                            <h2 id="support-modal-title" className="text-xl font-bold text-gray-900">Contact IT Support</h2>
                             <p className="text-xs text-gray-500">How can we help you today?</p>
                         </div>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                        aria-label="Close support modal"
                     >
                         <X size={20} />
                     </button>
@@ -99,7 +115,7 @@ const SupportModal = ({ isOpen, onClose }) => {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 mb-1.5 ml-1 uppercase tracking-wider">Your Name</label>
                                     <input

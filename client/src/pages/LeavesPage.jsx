@@ -15,12 +15,12 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
+import { toast, confirmAction } from '../store/useUIStore';
 
 const LeavesPage = () => {
     const { user, getProfile } = useAuthStore();
     const [leaves, setLeaves] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
     const [btnLoading, setBtnLoading] = useState(false);
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm();
@@ -47,56 +47,77 @@ const LeavesPage = () => {
         setBtnLoading(true);
         try {
             await api.post('/leave', data);
-            setShowModal(false);
+            toast.success('Leave application submitted');
             reset();
             fetchLeaves();
-            getProfile(); // Refresh balances after application
+            getProfile();
         } catch (error) {
-            alert(error.response?.data?.message || 'Failed to apply');
+            toast.error(error.response?.data?.message || 'Failed to apply for leave');
         } finally {
             setBtnLoading(false);
         }
     };
 
     const handleApprove = async (leaveId) => {
-        if (!window.confirm('Are you sure you want to approve this leave request?')) return;
+        const confirmed = await confirmAction({
+            title: 'Approve Leave',
+            message: 'Are you sure you want to approve this leave request?',
+            confirmText: 'Approve',
+            variant: 'primary'
+        });
+        if (!confirmed) return;
 
         setBtnLoading(true);
         try {
             await api.put(`/leave/${leaveId}`, { status: 'approved' });
+            toast.success('Leave request approved');
             fetchLeaves();
-            getProfile(); // Refresh balances if self-approving or for context
+            getProfile();
         } catch (error) {
-            alert(error.response?.data?.message || 'Failed to approve');
+            toast.error(error.response?.data?.message || 'Failed to approve');
         } finally {
             setBtnLoading(false);
         }
     };
 
     const handleReject = async (leaveId) => {
-        if (!window.confirm('Are you sure you want to reject this leave request?')) return;
+        const confirmed = await confirmAction({
+            title: 'Reject Leave',
+            message: 'Are you sure you want to reject this leave request?',
+            confirmText: 'Reject',
+            variant: 'danger'
+        });
+        if (!confirmed) return;
 
         setBtnLoading(true);
         try {
             await api.put(`/leave/${leaveId}`, { status: 'rejected' });
+            toast.success('Leave request rejected');
             fetchLeaves();
         } catch (error) {
-            alert(error.response?.data?.message || 'Failed to reject');
+            toast.error(error.response?.data?.message || 'Failed to reject');
         } finally {
             setBtnLoading(false);
         }
     };
 
     const handleCancel = async (leaveId) => {
-        if (!window.confirm('Are you sure you want to cancel this leave request? Leave balance will be restored if previously approved.')) return;
+        const confirmed = await confirmAction({
+            title: 'Cancel Leave Request',
+            message: 'Are you sure you want to cancel this leave request? Leave balance will be restored if previously approved.',
+            confirmText: 'Cancel Leave',
+            variant: 'danger'
+        });
+        if (!confirmed) return;
 
         setBtnLoading(true);
         try {
             await api.put(`/leave/${leaveId}`, { status: 'cancelled' });
+            toast.info('Leave request cancelled');
             fetchLeaves();
-            getProfile(); // Refresh balances
+            getProfile();
         } catch (error) {
-            alert(error.response?.data?.message || 'Failed to cancel');
+            toast.error(error.response?.data?.message || 'Failed to cancel');
         } finally {
             setBtnLoading(false);
         }
@@ -125,26 +146,26 @@ const LeavesPage = () => {
             </div>
 
             {/* Leave Balance Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gray-500 px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-white font-bold text-lg">Leave Balance</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
+                    <h3 className="text-slate-900 font-bold text-base">Leave Balance</h3>
                 </div>
                 <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[
-                            { label: 'Casual Leave (CL)', count: balances.casual, bg: 'bg-blue-600' },
-                            { label: 'Sick Leave (SL)', count: balances.sick, bg: 'bg-green-700' },
+                            { label: 'Casual Leave (CL)', count: balances.casual, bg: 'bg-primary-600' },
+                            { label: 'Sick Leave (SL)', count: balances.sick, bg: 'bg-emerald-600' },
                             { label: 'Earned Leave (EL)', count: balances.earned, bg: 'bg-purple-600' },
-                            { label: 'Unpaid Leave(UL)', count: balances.unpaid, bg: 'bg-emerald-500' },
+                            { label: 'Unpaid Leave (UL)', count: balances.unpaid, bg: 'bg-teal-600' },
                             { label: 'Paternity Leave', count: balances.paternity, bg: 'bg-orange-600' },
-                            { label: 'Bereavement Leave', count: balances.bereavement, bg: 'bg-sky-400' },
+                            { label: 'Bereavement Leave', count: balances.bereavement, bg: 'bg-sky-600' },
                         ].map((item) => (
                             <div
                                 key={item.label}
-                                className={`${item.bg} px-4 py-3 rounded-lg flex justify-between items-center text-white shadow-sm hover:opacity-90 transition-all cursor-default`}
+                                className={`${item.bg} px-4 py-3.5 rounded-xl flex justify-between items-center text-white shadow-sm`}
                             >
                                 <span className="font-semibold text-sm">{item.label}</span>
-                                <span className="font-bold border-l border-white/30 pl-3 ml-3">{parseFloat(item.count || 0).toFixed(2)}</span>
+                                <span className="font-bold border-l border-white/30 pl-3 ml-3 font-mono">{parseFloat(item.count || 0).toFixed(2)}</span>
                             </div>
                         ))}
                     </div>
@@ -152,17 +173,18 @@ const LeavesPage = () => {
             </div>
 
             {/* Apply Leave Form Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gray-500 px-6 py-4 border-b border-gray-200 border-t-4 border-t-red-500">
-                    <h3 className="text-white font-bold text-lg">Apply Leave</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
+                    <h3 className="text-slate-900 font-bold text-base">Apply for Leave</h3>
                 </div>
-                <div className="p-8">
+                <div className="p-6 sm:p-8">
                     <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl space-y-6">
                         <div className="space-y-2">
-                            <label className="block text-sm font-bold text-gray-700">Leave Category <span className="text-red-500">*</span></label>
+                            <label htmlFor="leave-type" className="block text-sm font-bold text-slate-700">Leave Category <span className="text-red-500">*</span></label>
                             <select
+                                id="leave-type"
                                 {...register('leaveType', { required: true })}
-                                className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 transition-all text-gray-700"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all text-slate-700 text-sm"
                             >
                                 <option value="">Select Leave</option>
                                 <option value="casual">Casual Leave (CL)</option>
@@ -216,13 +238,13 @@ const LeavesPage = () => {
                             {errors.reason && <p className="text-red-500 text-xs">Reason is required</p>}
                         </div>
 
-                        <div className="pt-4">
+                        <div className="pt-2">
                             <button
                                 disabled={btnLoading}
                                 type="submit"
-                                className="px-8 py-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
+                                className="px-8 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 transition-all shadow-md shadow-primary-100 disabled:opacity-50 flex items-center gap-2 text-sm"
                             >
-                                {btnLoading ? <Loader2 className="animate-spin" size={20} /> : 'Apply Leave'}
+                                {btnLoading ? <Loader2 className="animate-spin" size={18} /> : 'Apply Leave'}
                             </button>
                         </div>
                     </form>
@@ -311,18 +333,22 @@ const LeavesPage = () => {
                                                     {canApprove && leave.status === 'pending' && (
                                                         <>
                                                             <button
+                                                                type="button"
                                                                 onClick={() => handleApprove(leave._id)}
                                                                 disabled={btnLoading}
                                                                 className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all shadow-sm"
                                                                 title="Approve"
+                                                                aria-label="Approve leave request"
                                                             >
                                                                 <ThumbsUp size={16} />
                                                             </button>
                                                             <button
+                                                                type="button"
                                                                 onClick={() => handleReject(leave._id)}
                                                                 disabled={btnLoading}
                                                                 className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm"
                                                                 title="Reject"
+                                                                aria-label="Reject leave request"
                                                             >
                                                                 <ThumbsDown size={16} />
                                                             </button>
@@ -330,10 +356,12 @@ const LeavesPage = () => {
                                                     )}
                                                     {(canApprove || leave.employee?._id === user?.employee?._id) && (
                                                         <button
+                                                            type="button"
                                                             onClick={() => handleCancel(leave._id)}
                                                             disabled={btnLoading}
                                                             className="p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-600 hover:text-white transition-all shadow-sm"
                                                             title="Cancel"
+                                                            aria-label="Cancel leave request"
                                                         >
                                                             <XCircle size={16} />
                                                         </button>

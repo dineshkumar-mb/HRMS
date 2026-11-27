@@ -16,6 +16,8 @@ import MyAttendanceLog from './pages/MyAttendanceLog';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import RegularizationManagement from './pages/RegularizationManagement';
 import SelfAssessmentPage from './pages/SelfAssessmentPage';
+import ToastContainer from './components/ui/ToastContainer';
+import ConfirmDialog from './components/ui/ConfirmDialog';
 
 const ProtectedRoute = ({ children, roles }) => {
   const { isAuthenticated, user } = useAuthStore();
@@ -54,10 +56,15 @@ function App() {
                 <RegularizationManagement />
               </ProtectedRoute>
             } />
+            <Route path="report" element={
+              <ProtectedRoute roles={['admin', 'hr']}>
+                <AttendanceReportGrid />
+              </ProtectedRoute>
+            } />
           </Route>
           <Route path="leaves" element={<LeavesPage />} />
           <Route path="payroll" element={
-            <ProtectedRoute roles={['admin', 'hr', 'employee']}>
+            <ProtectedRoute roles={['admin', 'hr', 'manager', 'employee']}>
               <PayrollPage />
             </ProtectedRoute>
           } />
@@ -78,6 +85,8 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <ToastContainer />
+      <ConfirmDialog />
     </BrowserRouter>
   );
 }

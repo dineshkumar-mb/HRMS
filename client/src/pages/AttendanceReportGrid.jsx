@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Loader2, Calendar } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import api from '../services/api';
 
 const AttendanceReportGrid = () => {
@@ -8,8 +8,11 @@ const AttendanceReportGrid = () => {
     const [month, setMonth] = useState(new Date().toISOString().substring(0, 7));
     const [selectedDept, setSelectedDept] = useState('');
     const [selectedDesig, setSelectedDesig] = useState('');
+    const [selectedEmployee, setSelectedEmployee] = useState('');
     const [allDepts, setAllDepts] = useState([]);
     const [allDesigs, setAllDesigs] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const entriesPerPage = 10;
 
     useEffect(() => {
         fetchReportData();
@@ -24,8 +27,8 @@ const AttendanceReportGrid = () => {
 
             const { data } = await api.get(`/reports/attendance-grid?${query.toString()}`);
             setData(data.data);
+            setCurrentPage(1);
 
-            // Populate filters if not yet done
             if (allDepts.length === 0) {
                 const depts = [...new Set(data.data.map(e => e.department))].filter(Boolean);
                 const desigs = [...new Set(data.data.map(e => e.designation))].filter(Boolean);
@@ -60,41 +63,46 @@ const AttendanceReportGrid = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'P': return 'text-green-600';
-            case 'P/2': return 'text-orange-600';
+            case 'P': return 'text-emerald-600';
+            case 'P/2': return 'text-amber-600';
             case 'W': return 'text-amber-500';
-            case 'H': return 'text-blue-500';
+            case 'H': return 'text-primary-600';
             case 'L': return 'text-purple-600';
             case 'A': return 'text-red-600';
-            default: return 'text-gray-400';
+            default: return 'text-slate-400';
         }
     };
 
+    const filteredData = selectedEmployee
+        ? data.filter(emp => String(emp.id) === String(selectedEmployee))
+        : data;
+
+    const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+    const indexOfFirst = (currentPage - 1) * entriesPerPage;
+    const indexOfLast = indexOfFirst + entriesPerPage;
+    const paginatedData = filteredData.slice(indexOfFirst, indexOfLast);
+
     return (
         <div className="space-y-6 pb-12">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs text-[#5bc0de]">
-                <h1 className="text-xl font-bold text-gray-800">Attendance Report</h1>
-                <div className="flex items-center gap-1">
-                    <Calendar size={12} />
-                    <span>Home &gt; Attendance &gt; Report</span>
-                </div>
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Attendance Report</h1>
+                <p className="text-sm text-slate-500 mt-0.5">Monthly attendance matrix across departments and employees.</p>
             </div>
 
-            <div className="bg-white rounded-sm border border-gray-200 shadow-sm p-4 sm:p-6 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-6 overflow-hidden">
                 {/* Filters */}
                 <div className="flex flex-wrap gap-3 sm:gap-4 mb-6">
-                    <div className="flex items-center border border-gray-300 rounded-sm w-full sm:w-auto">
-                        <input
-                            type="month"
-                            className="px-3 py-1.5 text-sm outline-none flex-1 sm:w-auto"
-                            value={month}
-                            onChange={(e) => setMonth(e.target.value)}
-                        />
-                        <button className="bg-[#5bc0de] text-white px-4 py-1.5 text-sm font-bold border-l border-[#46b8da] hover:bg-[#46b8da] transition-colors">Go</button>
-                    </div>
+                    <input
+                        type="month"
+                        aria-label="Select month"
+                        className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-auto"
+                        value={month}
+                        onChange={(e) => setMonth(e.target.value)}
+                    />
 
                     <select
-                        className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 w-full sm:w-auto min-w-0 sm:min-w-[180px]"
+                        aria-label="Filter by department"
+                        className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm text-slate-700 w-full sm:w-auto min-w-0 sm:min-w-[180px] outline-none focus:ring-2 focus:ring-primary-500"
                         value={selectedDept}
                         onChange={(e) => setSelectedDept(e.target.value)}
                     >
@@ -103,7 +111,8 @@ const AttendanceReportGrid = () => {
                     </select>
 
                     <select
-                        className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 w-full sm:w-auto min-w-0 sm:min-w-[180px]"
+                        aria-label="Filter by designation"
+                        className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm text-slate-700 w-full sm:w-auto min-w-0 sm:min-w-[180px] outline-none focus:ring-2 focus:ring-primary-500"
                         value={selectedDesig}
                         onChange={(e) => setSelectedDesig(e.target.value)}
                     >
@@ -111,93 +120,106 @@ const AttendanceReportGrid = () => {
                         {allDesigs.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
 
-                    <select className="border border-gray-300 rounded-sm px-3 py-1.5 text-sm text-gray-500 w-full sm:w-auto min-w-0 sm:min-w-[180px]">
-                        <option>Select Employee</option>
+                    <select
+                        aria-label="Filter by employee"
+                        className="border border-slate-200 bg-slate-50 rounded-xl px-3 py-2 text-sm text-slate-700 w-full sm:w-auto min-w-0 sm:min-w-[180px] outline-none focus:ring-2 focus:ring-primary-500"
+                        value={selectedEmployee}
+                        onChange={(e) => {
+                            setSelectedEmployee(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                    >
+                        <option value="">All Employees</option>
                         {data.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                     </select>
                 </div>
 
-                <div className="mb-4 text-xs text-gray-600">
-                    Showing {data.length} entries
-                </div>
-
                 {/* The Horizontal Grid */}
-                <div className="overflow-x-auto border border-gray-100">
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
                     {loading ? (
                         <div className="p-20 flex flex-col items-center justify-center gap-2">
-                            <Loader2 className="animate-spin text-[#5bc0de]" size={40} />
-                            <p className="text-sm text-gray-500">Generating report matrix...</p>
+                            <Loader2 className="animate-spin text-primary-600" size={36} />
+                            <p className="text-sm text-slate-500">Generating report matrix...</p>
                         </div>
                     ) : (
-                        <table className="w-full text-[10px] border-collapse min-w-[1200px]">
+                        <table className="w-full text-[11px] border-collapse min-w-[1200px]">
                             <thead>
-                                <tr className="bg-gray-100 text-gray-700">
-                                    <th className="border-r border-b border-gray-200 px-4 py-4 text-left w-64 bg-gray-100 sticky left-0 z-10">Employee Name</th>
+                                <tr className="bg-slate-50 text-slate-700">
+                                    <th className="border-r border-b border-slate-200 px-4 py-3 text-left w-64 bg-slate-50 sticky left-0 z-10 font-bold">Employee Name</th>
                                     {days.map(day => (
-                                        <th key={day} className="border-r border-b border-gray-200 text-center py-2 min-w-[32px]">
-                                            <div className="font-bold">{day}-</div>
-                                            <div className="text-[9px] font-normal">{getMonthName(month)}</div>
-                                            <div className="text-[9px] font-normal uppercase">{getDayAbbr(month, day)}</div>
+                                        <th key={day} className="border-r border-b border-slate-200 text-center py-2 min-w-[34px]">
+                                            <div className="font-bold">{day}</div>
+                                            <div className="text-[9px] font-normal text-slate-500">{getMonthName(month)}</div>
+                                            <div className="text-[9px] font-normal uppercase text-slate-400">{getDayAbbr(month, day)}</div>
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {data.map((emp) => (
-                                    <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="border-r border-b border-gray-200 px-4 py-4 font-bold text-gray-700 sticky left-0 bg-white z-10 group-hover:bg-gray-50">
-                                            {emp.name}
-                                            <div className="text-[10px] text-gray-400 mt-1 uppercase">ID: {emp.employeeId}</div>
+                                {paginatedData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={days.length + 1} className="px-6 py-12 text-center text-slate-400 text-sm">
+                                            No attendance records match your filters.
                                         </td>
-                                        {days.map(day => {
-                                            const status = emp.attendance?.[day] || '-';
-                                            const color = getStatusColor(status);
-                                            return (
-                                                <td
-                                                    key={day}
-                                                    className={`border-r border-b border-gray-200 text-center py-4 group/cell relative ${status === 'W' || status === 'H' ? 'bg-orange-50/20' : ''}`}
-                                                >
-                                                    <div className={`font-bold mb-1 ${color}`}>{status}</div>
-
-                                                    {/* Punch Details Hover */}
-                                                    {status !== '-' && status !== 'W' && status !== 'H' && (
-                                                        <div className="hidden group-hover/cell:block absolute z-20 top-full left-1/2 -translate-x-1/2 bg-gray-900 text-white p-2 rounded shadow-xl min-w-[120px] pointer-events-none">
-                                                            <div className="text-[9px] whitespace-nowrap">
-                                                                <p>In: {emp.punchData?.[day]?.in || 'N/A'}</p>
-                                                                <p>Out: {emp.punchData?.[day]?.out || 'N/A'}</p>
-                                                                {emp.punchData?.[day]?.location && (
-                                                                    <p className="text-[#5bc0de] mt-1 border-t border-gray-700 pt-1 flex items-center gap-1 justify-center">
-                                                                        <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z" /></svg>
-                                                                        Verified
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className={`${color} flex justify-center opacity-80`}>
-                                                        {status !== 'A' && status !== '-' && (
-                                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
-                                                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            );
-                                        })}
                                     </tr>
-                                ))}
+                                ) : (
+                                    paginatedData.map((emp) => (
+                                        <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="border-r border-b border-slate-200 px-4 py-3.5 font-bold text-slate-800 sticky left-0 bg-white z-10">
+                                                {emp.name}
+                                                <div className="text-[10px] text-slate-400 mt-0.5 uppercase font-medium">ID: {emp.employeeId}</div>
+                                            </td>
+                                            {days.map(day => {
+                                                const status = emp.attendance?.[day] || '-';
+                                                const color = getStatusColor(status);
+                                                return (
+                                                    <td
+                                                        key={day}
+                                                        className={`border-r border-b border-slate-200 text-center py-3 group/cell relative ${status === 'W' || status === 'H' ? 'bg-amber-50/30' : ''}`}
+                                                    >
+                                                        <div className={`font-bold ${color}`}>{status}</div>
+
+                                                        {status !== '-' && status !== 'W' && status !== 'H' && (
+                                                            <div className="hidden group-hover/cell:block absolute z-20 top-full left-1/2 -translate-x-1/2 bg-slate-900 text-white p-2 rounded-lg shadow-xl min-w-[120px] pointer-events-none">
+                                                                <div className="text-[10px] whitespace-nowrap">
+                                                                    <p>In: {emp.punchData?.[day]?.in || 'N/A'}</p>
+                                                                    <p>Out: {emp.punchData?.[day]?.out || 'N/A'}</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     )}
                 </div>
 
-                <div className="mt-4 flex justify-between items-center text-xs text-gray-500">
-                    <div>Showing 1 to 1 of 1 entries</div>
-                    <div className="flex gap-1">
-                        <button className="px-3 py-1 border border-gray-200 rounded-sm">Previous</button>
-                        <button className="px-3 py-1 bg-[#222222] text-white rounded-sm">1</button>
-                        <button className="px-3 py-1 border border-gray-200 rounded-sm">Next</button>
+                <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-500">
+                    <div>
+                        Showing {filteredData.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filteredData.length)} of {filteredData.length} entries
+                    </div>
+                    <div className="flex gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                        >
+                            Previous
+                        </button>
+                        <span className="px-3 py-1.5 bg-primary-600 text-white rounded-lg font-bold">{currentPage}</span>
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage >= totalPages || totalPages === 0}
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                        >
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>

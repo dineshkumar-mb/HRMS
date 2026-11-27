@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
-import { X, CalendarDays, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Loader2 } from 'lucide-react';
 import api from '../../services/api';
+import { toast } from '../../store/useUIStore';
 
 const RegularizationModal = ({ isOpen, onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, onClose]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -20,7 +30,7 @@ const RegularizationModal = ({ isOpen, onClose, onSuccess }) => {
             onSuccess();
             onClose();
         } catch (error) {
-            alert(error.response?.data?.message || 'Regularization request failed');
+            toast.error(error.response?.data?.message || 'Regularization request failed');
         } finally {
             setLoading(false);
         }
@@ -29,16 +39,23 @@ const RegularizationModal = ({ isOpen, onClose, onSuccess }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
-            <div className="bg-white rounded-3xl w-full max-w-md p-5 sm:p-8 shadow-2xl animate-in zoom-in slide-in-from-bottom-4 duration-300 max-h-[90vh] overflow-y-auto my-auto">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-fade-in overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reg-modal-title"
+        >
+            <div className="bg-white rounded-3xl w-full max-w-md p-5 sm:p-8 shadow-2xl animate-zoom-in max-h-[90vh] overflow-y-auto my-auto">
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Regularization Request</h3>
+                        <h3 id="reg-modal-title" className="text-xl sm:text-2xl font-bold text-gray-900">Regularization Request</h3>
                         <p className="text-xs sm:text-sm text-gray-500 mt-1">Found an error in your logs? Raise it here.</p>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors focus:outline-none"
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                        aria-label="Close regularization modal"
                     >
                         <X size={20} />
                     </button>
