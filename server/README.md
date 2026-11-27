@@ -1,112 +1,65 @@
 # HRMS Server
 
-This is the backend server for the Human Resource Management System (HRMS). It is built with Node.js, Express, and MongoDB.
+Backend REST API for the Human Resource Management System (HRMS), built with **Node.js**, **Express**, and **MongoDB (Mongoose)**.
 
-## 🚀 Tech Stack
+## Tech Stack
 
-- **Runtime Environment:** Node.js
+- **Runtime:** Node.js
 - **Framework:** Express.js
-- **Database:** MongoDB (using Mongoose ODM)
-- **Authentication:** JWT (JSON Web Tokens) with Refresh Tokens
-- **Security:** Helmet, CORS, bcryptjs
-- **File Uploads:** Multer
+- **Database:** MongoDB (Mongoose ODM)
+- **Authentication & Security:** JWT, bcryptjs, Helmet, CORS, Speakeasy/QRCode (2FA)
 - **Email Service:** Nodemailer
-- **Validation:** Zod
 
-## 📂 Project Structure
+## Project Structure
 
-```
+```text
 server/
-├── config/             # Database connection configuration
-├── controllers/        # Request handlers (logic for routes)
-├── middlewares/        # Custom Express middlewares (auth, error handling)
-├── models/             # Mongoose schemas/models
-├── routes/             # API route definitions
-├── uploads/            # Directory for uploaded files
-├── utils/              # Utility functions (JWT generation, etc.)
-├── .env                # Environment variables
-└── index.js            # Server entry point
+├── config/db.js          # MongoDB connection
+├── controllers/          # Route handlers
+├── middlewares/          # authMiddleware (protect, authorize), errorMiddleware
+├── models/               # Mongoose schemas (User, Employee, Attendance, Leave, Holiday, Payroll, Announcement, etc.)
+├── routes/               # Express route definitions
+├── utils/                # JWT helpers
+├── seedHolidays.js       # Seeds 2026–2027 national holidays
+└── index.js              # Server entry point
 ```
 
-## 🔧 Setup & Installation
+## Setup & Running
 
-1.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-2.  **Environment Configuration:**
-    Ensure you have a `.env` file in the root directory with the following variables:
-    ```env
-    PORT=5000
-    NODE_ENV=development
-    MONGO_URI=your_mongodb_connection_string
-    JWT_SECRET=your_jwt_secret
-    JWT_EXPIRE=24h
-    REFRESH_TOKEN_SECRET=your_refresh_secret
-    REFRESH_TOKEN_EXPIRE=7d
-    CLIENT_URL=http://localhost:5173
-    EMAIL_HOST=smtp.gmail.com
-    EMAIL_PORT=587
-    EMAIL_USER=your_email
-    EMAIL_PASS=your_email_password
-    EMAIL_FROM=your_sender_address
-    ```
+2. **Configure `.env`:**
+   ```env
+   PORT=5000
+   NODE_ENV=development
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret
+   CLIENT_URL=http://localhost:5173
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_USER=your_email
+   EMAIL_PASS=your_email_password
+   EMAIL_FROM=your_sender_address
+   ```
 
-3.  **Run the Server:**
-    - Development mode (with auto-reload):
-      ```bash
-      npm run dev
-      ```
-      *(Note: Requires `nodemon` installed globally or as a dev dependency)*
-    - Production mode:
-      ```bash
-      node index.js
-      ```
+3. **Seed & start:**
+   ```bash
+   node seedHolidays.js   # Optional: seed 2026–2027 holidays
+   npm run dev            # Development with nodemon
+   npm start              # Production (node index.js)
+   ```
 
-## 📡 API Endpoints
+## API Endpoints (`/api`)
 
-The API is prefixed with `/api`.
-
-### Authentication (`/api/auth`)
-- `POST /register`: Register a new user.
-- `POST /login`: Login with email and password.
-- `POST /face-login`: Login using facial recognition.
-- `POST /enroll-face`: Enroll facial biometrics (Protected).
-- `POST /logout`: Logout user.
-- `GET /profile`: Get current user profile (Protected).
-- `PUT /change-password`: Change user password (Protected).
-- `POST /forgot-password`: Request password reset.
-- `PUT /reset-password/:resettoken`: Reset password.
-
-### Employees (`/api/employees`)
-- CRUD operations for employee management.
-- `GET /highlights`: Dashboard highlights (birthdays, work anniversaries).
-
-### Attendance (`/api/attendance`)
-- Manage daily attendance records.
-- Clock-in/Clock-out functionality.
-
-### Leaves (`/api/leave`)
-- Apply for leave.
-- Approve/Reject leave requests (Admin/HR).
-- Leave balance tracking.
-
-### Other Modules
-- **Payroll (`/api/payroll`)**: Salary slip generation and management.
-- **Holidays (`/api/holidays`)**: Company holiday calendar.
-- **Reports (`/api/reports`)**: Generate analytics and reports.
-- **Support (`/api/support`)**: Helpdesk and support tickets.
-- **Notifications (`/api/notifications`)**: System notifications.
-
-## 🛡️ Security Features
-
-- **JWT Authentication:** Secure stateless authentication.
-- **Face Recognition:** Biometric authentication using facial descriptors stored as mathematical representations (not images).
-- **Password Hashing:** Passwords are hashed using `bcryptjs` before storage.
-- **Route Protection:** `protect` middleware ensures only authorized users can access sensitive endpoints.
-- **Role-Based Access:** Support for different user roles (Admin, HR, Employee).
-
-## 📝 Script Utilities
-- `seed.js`: Script to seed the database with initial data.
-- `check_users.js`, `fix_and_sync.js`: Utilities for database maintenance.
+- **Auth (`/api/auth`)**: `POST /login`, `POST /face-login`, `POST /enroll-face`, `POST /logout`, `GET /profile`, `PUT /change-password`, `POST /forgot-password`, `PUT /reset-password/:token`, `POST /2fa/generate`, `POST /2fa/verify`, `POST /2fa/validate`, `POST /2fa/disable`.
+- **Employees (`/api/employees`)**: CRUD (`GET /`, `GET /:id`, `POST /`, `PUT /:id` including self-service `profilePhoto`, `DELETE /:id`), `GET /highlights`, `POST /:id/documents`, `DELETE /:id/documents/:docId`.
+- **Attendance (`/api/attendance`)**: `GET /me`, `POST /check-in` (auto-tracks 20-day consecutive working days for Earned Leave credit), `POST /check-out`.
+- **Leaves (`/api/leave`)**: `GET /`, `GET /on-leave-today`, `POST /`, `PUT /:id` (approval deducts balance & resets EL streak; rejection/cancellation restores approved balance).
+- **Holidays (`/api/holidays`)**: `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`, `POST /seed-defaults`.
+- **Announcements (`/api/announcements`)**: `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`.
+- **Payroll (`/api/payroll`)**: `GET /me`, `GET /`, `POST /generate`, `PUT /:id` (adjustments & payout), `POST /mark-paid`.
+- **Regularization (`/api/regularization`)** & **Permissions (`/api/permissions`)**: Employee submission (`/me`, `/`) and Admin/HR approval queues (`GET /`, `PUT /:id`).
+- **Assessments (`/api/assessments`)**, **Reports (`/api/reports`)**, **Notifications (`/api/notifications`)**, **Support (`/api/support`)**.

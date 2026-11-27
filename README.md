@@ -1,224 +1,77 @@
+# HRMS Portal
 
+A full-stack Human Resource Management System (HRMS) built with **React 19 + Vite + Tailwind CSS 4** (`client/`) and **Node.js + Express + MongoDB** (`server/`). Includes role-based access (`admin`, `hr`, `manager`, `employee`), biometric Face ID login, Two-Factor Authentication (2FA), automated Earned Leave generation, payroll processing with PDF/Print payslips, and interactive analytics.
 
-# HRMS Client
+---
 
-This is the frontend application for the Human Resource Management System (HRMS), built with React, Vite, and Tailwind CSS. It features a modern, responsive UI and integrates biometrically secure face recognition.
+## Project Structure
 
-## 🚀 Tech Stack
-
-- **Framework:** React 19 (via Vite)
-- **Styling:** Tailwind CSS 4
-- **State Management:** Zustand
-- **Routing:** React Router DOM 7
-- **Icons:** Lucide React
-- **HTTP Client:** Axios
-- **Face Recognition:** face-api.js
-- **Webcam Integration:** react-webcam
-- **Charts:** Recharts
-- **Form Handling:** React Hook Form + Zod
-- **Date Handling:** date-fns
-
-## 📂 Project Structure
-
-```
-client/
-├── public/
-│   ├── models/             # AI models for face recognition (weights & shards)
-│   └── ...                 # Static assets
-├── src/
-│   ├── components/         # Reusable UI components
-│   ├── features/           # Feature-specific components (auth, face recognition)
-│   ├── layouts/            # Layout wrappers (DashboardLayout, etc.)
-│   ├── pages/              # Application pages (Dashboard, Login, Profile, etc.)
-│   ├── services/           # API service configuration (Axios interceptors)
-│   ├── store/              # Global state management config (Zustand)
-│   ├── utils/              # Helper functions
-│   └── main.jsx            # Application entry point
-├── .env                    # Environment variables
-└── vite.config.js          # Vite configuration
+```text
+HRMS/
+├── client/                 # React + Vite frontend (Vercel SPA rewrite via vercel.json)
+│   ├── public/models/      # face-api.js weights & shards
+│   └── src/
+│       ├── components/     # Modals, AdminPayrollView, HolidayManagerModal, UI toasts/dialogs
+│       ├── features/auth/  # FaceLogin & FaceEnrollment
+│       ├── layouts/        # DashboardLayout (unified slate/primary theme & notifications)
+│       ├── pages/          # Lazy-loaded route pages
+│       ├── services/       # Axios API client (src/services/api.js)
+│       └── store/          # Zustand stores (useAuthStore, useUIStore)
+└── server/                 # Express + Mongoose REST API
+    ├── config/             # MongoDB connection
+    ├── controllers/        # Business logic (auth, employees, attendance, leave, payroll, holidays, announcements, etc.)
+    ├── middlewares/        # JWT auth & error handling
+    ├── models/             # Mongoose schemas
+    ├── routes/             # Express route modules (/api/*)
+    └── seedHolidays.js     # Holiday seeding script (2026–2027)
 ```
 
-## 🔧 Setup & Installation
+---
 
-1.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
+## Key Features Implemented
 
-2.  **Environment Configuration:**
-    Create a `.env` file in the root directory (if not present, though Vite uses `.env.local` primarily):
-    ```env
-    VITE_API_URL=https://hrms-22ch.onrender.com/api
-    ```
+### Authentication & Security
+- **Role-Tailored Login UI**: Dynamic visual themes and quick demo-fill for **Admin** (Blue), **HR Manager** (Emerald), and **Developer** (Violet).
+- **Face Recognition & 2FA**: Biometric login/enrollment via `face-api.js`, TOTP 2FA with QR code + manual setup key, and 4-level password strength meters on Change & Reset Password pages.
+- **SPA Routing on Vercel**: Configured [client/vercel.json](client/vercel.json) rewrites so refreshing any client route serves `/index.html`.
 
-3.  **Run the Application:**
-    - Development server:
-      ```bash
-      npm run dev
-      ```
-    - Build for production:
-      ```bash
-      npm run build
-      ```
-    - Preview production build:
-      ```bash
-      npm run preview
-      ```
+### Dashboard & Team Collaboration
+- **Attendance Clock-In / Clock-Out**: Geolocation-verified punches, 2-hour permission requests, and regularization requests.
+- **Company Announcements**: Pinned/prioritized notices (`info`, `important`, `urgent`) with Admin/HR Create, Edit, and Delete controls.
+- **On Leave Today & Celebrations**: Live team availability widget plus clickable **New Joiners**, **Birthdays**, and **Job Anniversaries** modals.
+- **Upcoming Holidays Marquee**: Continuous horizontal marquee synced directly with the Holiday Manager database.
 
-## ✨ Key Features
+### Attendance, Leaves & Holiday Management
+- **Holiday Manager (`/holidays`)**: Full CRUD (`Create`, `Edit`, `Delete`, and default 2026–2027 seeding) for Admin/HR, synced with the Dashboard and Attendance Calendar.
+- **Automatic Earned Leave (EL) Generation**: Working-day check-ins without approved leave increment a 20-day streak counter (`earnedLeaveProgress`). Every 20 consecutive working days automatically credits `+1` Earned Leave and sends a notification; approved leaves reset the streak.
+- **Leave Workflow**: Live day-count calculator, date validation, balance preview, status filter tabs, and overlapping team leave warnings on approval.
+- **Attendance Queues & Reports**: Unified **Regularizations | Permissions (2h)** approval screen, **Attendance Calendar** (with holiday markers & Today jump), **My Attendance Log** (including 2-hour permission status history), and **Attendance Report Grid**.
 
-### 👤 Authentication & Security
-- **Secure Login:** Traditional email/password login.
-- **Face Recognition Login:** Login instantly by looking at the camera.
-- **Session Management:** Secure token storage with automatic refresh handling.
-- **Role-Based Access:** UI elements adapt based on user roles (Admin/Employee).
+### Employees, Payroll, Assessments & Analytics
+- **Personnel Directory & Org Chart (`/employees`)**: Search, multi-filter dropdown, CSV export, Earned Leave (EL) progress column, and a clickable **Directory | Org Chart** reporting hierarchy view.
+- **Employee Document Vault (`/profile`)**: Upload, categorize (`Offer Letter`, `ID Proof`, `Tax Form`, `Other`), download, and delete documents, plus self-service profile photo upload.
+- **Salary & Payroll (`/payroll`)**: Personal salary slips for all roles (`admin`, `hr`, `manager`, `employee`), Admin/HR payroll processing, allowance/deduction adjustments, **Mark Paid / Mark All Paid** (`paidAt` tracking), PDF export, and `@media print`-styled payslip printing.
+- **Self-Assessments (`/assessments`)**: Quarterly employee self-rating/submission locking and manager review workflow.
+- **Reports & Analytics (`/reports`)**: Interactive `recharts` visualizations (Daily Attendance Trend, Headcount by Department, Leave Status Mix) and CSV exports.
 
-### 🤳 Face Recognition
-- **Technology:** Uses `face-api.js` (`ssdMobilenetv1`, `faceLandmark68Net`, `faceRecognitionNet`).
-- **Privacy:** No images are stored. Only mathematical facial descriptors are sent to the server.
-- **Enrollment:** Secure enrollment process in the Profile section with liveness checks (camera readiness).
+---
 
-### 📊 Dashboard & Analytics
-- **Overview:** Real-time summary of attendance, leave balance, and team members.
-- **Charts:** Visual analytics for attendance trends and department metrics.
-- **Highlights:** Birthdays and work anniversaries widgets.
+## Local Setup
 
-### 🏢 Core Modules
-- **Personnel Directory:** Browse and search employee records.
-- **Attendance Management:** Clock-in/out, view logs, and regularization requests.
-- **Leave Management:** Apply for leave, view balances, and approval workflows.
-- **Payroll:** View and download salary slips.
-- **Reports:** Generate and view detailed organizational reports.
-
-## 🤝 API Integration using `api.js`
-
-The application uses a centralized `api` service (`src/services/api.js`) which:
-- Automatically attaches the JWT token to every request.
-- Handles authorization errors (401) seamlessly.
-- Provides a consistent interface for making HTTP requests.
-
-## 🎨 UI/UX Design
-
-- **Responsive:** Fully responsive layout for unauthorized mobile and desktop views.
-- **Modern Interface:** Clean, card-based design with ample whitespace and consistent typography.
-- **Feedback:** Interactive loading states, toast notifications, and validation messages.
-
-
-
-
-
-
-
-
-# HRMS Server
-
-This is the backend server for the Human Resource Management System (HRMS). It is built with Node.js, Express, and MongoDB.
-
-## 🚀 Tech Stack
-
-- **Runtime Environment:** Node.js
-- **Framework:** Express.js
-- **Database:** MongoDB (using Mongoose ODM)
-- **Authentication:** JWT (JSON Web Tokens) with Refresh Tokens
-- **Security:** Helmet, CORS, bcryptjs
-- **File Uploads:** Multer
-- **Email Service:** Nodemailer
-- **Validation:** Zod
-
-## 📂 Project Structure
-
-```
-server/
-├── config/             # Database connection configuration
-├── controllers/        # Request handlers (logic for routes)
-├── middlewares/        # Custom Express middlewares (auth, error handling)
-├── models/             # Mongoose schemas/models
-├── routes/             # API route definitions
-├── uploads/            # Directory for uploaded files
-├── utils/              # Utility functions (JWT generation, etc.)
-├── .env                # Environment variables
-└── index.js            # Server entry point
+### 1. Server (`d:\HRMS\server`)
+```bash
+cd server
+npm install
+# Configure .env (PORT, MONGO_URI, JWT_SECRET, CLIENT_URL, EMAIL_*)
+node seedHolidays.js   # Optional: seed 2026–2027 holidays
+npm run dev
 ```
 
-## 🔧 Setup & Installation
+### 2. Client (`d:\HRMS\client`)
+```bash
+cd client
+npm install
+npm run dev
+```
 
-1.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-
-2.  **Environment Configuration:**
-    Ensure you have a `.env` file in the root directory with the following variables:
-    ```env
-    PORT=5000
-    NODE_ENV=development
-    MONGO_URI=your_mongodb_connection_string
-    JWT_SECRET=your_jwt_secret
-    JWT_EXPIRE=24h
-    REFRESH_TOKEN_SECRET=your_refresh_secret
-    REFRESH_TOKEN_EXPIRE=7d
-    CLIENT_URL=http://host:5173
-    EMAIL_HOST=smtp.gmail.com
-    EMAIL_PORT=587
-    EMAIL_USER=your_email
-    EMAIL_PASS=your_email_password
-    EMAIL_FROM=your_sender_address
-    ```
-
-3.  **Run the Server:**
-    - Development mode (with auto-reload):
-      ```bash
-      npm run dev
-      ```
-      *(Note: Requires `nodemon` installed globally or as a dev dependency)*
-    - Production mode:
-      ```bash
-      node index.js
-      ```
-
-## 📡 API Endpoints
-
-The API is prefixed with `/api`.
-
-### Authentication (`/api/auth`)
-- `POST /register`: Register a new user.
-- `POST /login`: Login with email and password.
-- `POST /face-login`: Login using facial recognition.
-- `POST /enroll-face`: Enroll facial biometrics (Protected).
-- `POST /logout`: Logout user.
-- `GET /profile`: Get current user profile (Protected).
-- `PUT /change-password`: Change user password (Protected).
-- `POST /forgot-password`: Request password reset.
-- `PUT /reset-password/:resettoken`: Reset password.
-
-### Employees (`/api/employees`)
-- CRUD operations for employee management.
-- `GET /highlights`: Dashboard highlights (birthdays, work anniversaries).
-
-### Attendance (`/api/attendance`)
-- Manage daily attendance records.
-- Clock-in/Clock-out functionality.
-
-### Leaves (`/api/leave`)
-- Apply for leave.
-- Approve/Reject leave requests (Admin/HR).
-- Leave balance tracking.
-
-### Other Modules
-- **Payroll (`/api/payroll`)**: Salary slip generation and management.
-- **Holidays (`/api/holidays`)**: Company holiday calendar.
-- **Reports (`/api/reports`)**: Generate analytics and reports.
-- **Support (`/api/support`)**: Helpdesk and support tickets.
-- **Notifications (`/api/notifications`)**: System notifications.
- https://hrms-22ch.onrender.com
-## 🛡️ Security Features
-
-- **JWT Authentication:** Secure stateless authentication.
-- **Face Recognition:** Biometric authentication using facial descriptors stored as mathematical representations (not images).
-- **Password Hashing:** Passwords are hashed using `bcryptjs` before storage.
-- **Route Protection:** `protect` middleware ensures only authorized users can access sensitive endpoints.
-- **Role-Based Access:** Support for different user roles (Admin, HR, Employee).
-
-## 📝 Script Utilities
-- `seed.js`: Script to seed the database with initial data.
-- `check_users.js`, `fix_and_sync.js`: Utilities for database maintenance.
+For detailed module docs, see [client/README.md](client/README.md) and [server/README.md](server/README.md).
