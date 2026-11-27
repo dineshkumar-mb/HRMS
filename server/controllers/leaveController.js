@@ -92,6 +92,10 @@ const updateLeaveStatus = async (req, res, next) => {
                 }
 
                 employee.leaveBalances[leaveType] -= daysToDeduct;
+                if (!employee.earnedLeaveProgress) {
+                    employee.earnedLeaveProgress = { consecutiveWorkingDays: 0, totalElEarned: 0 };
+                }
+                employee.earnedLeaveProgress.consecutiveWorkingDays = 0;
                 await employee.save();
             }
         } else if ((status === 'cancelled' || status === 'rejected') && prevStatus === 'approved') {
@@ -117,4 +121,25 @@ const updateLeaveStatus = async (req, res, next) => {
     }
 };
 
-module.exports = { applyLeave, getLeaves, updateLeaveStatus };
+// @desc    Get employees on approved leave today
+// @route   GET /api/leave/on-leave-today
+// @access  Private
+const getOnLeaveToday = async (req, res, next) => {
+    try {
+        const now = new Date();
+        const startOfToday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+        const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+        const leaves = await Leave.find({
+            status: 'approved',
+            startDate: { $lt: endOfToday },
+            endDate: { $gte: startOfToday }
+        }).populate('employee', 'firstName lastName department designation profilePhoto');
+
+        res.json({ success: true, count: leaves.length, data: leaves });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { applyLeave, getLeaves, updateLeaveStatus, getOnLeaveToday };

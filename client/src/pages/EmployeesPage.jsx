@@ -13,7 +13,9 @@ import {
     Trash2,
     X,
     Loader2,
-    User as UserIcon
+    User as UserIcon,
+    Network,
+    List
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
@@ -28,6 +30,7 @@ const EmployeesPage = () => {
     const [editingEmployee, setEditingEmployee] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [viewMode, setViewMode] = useState('table'); // 'table' | 'org'
     const [filters, setFilters] = useState({
         department: 'all',
         designation: 'all',
@@ -221,7 +224,25 @@ const EmployeesPage = () => {
                         )}
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="inline-flex p-1 bg-white rounded-xl border border-gray-200 shadow-xs">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('table')}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'table' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                            <List size={14} />
+                            Directory
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('org')}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'org' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                            <Network size={14} />
+                            Org Chart
+                        </button>
+                    </div>
                     <button
                         onClick={exportToCSV}
                         className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 font-medium transition-all text-sm"
@@ -340,8 +361,50 @@ const EmployeesPage = () => {
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
+                {viewMode === 'org' ? (
+                    <div className="p-6 space-y-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-bold text-gray-900">Reporting Hierarchy</h3>
+                            <span className="text-xs text-gray-400">Click any employee to view profile</span>
+                        </div>
+                        {(() => {
+                            const idSet = new Set(employees.map(e => e._id));
+                            const roots = employees.filter(e => !e.reportingManager?._id || !idSet.has(e.reportingManager._id));
+                            const renderNode = (emp, depth = 0) => {
+                                const reports = employees.filter(e => e.reportingManager?._id === emp._id);
+                                return (
+                                    <div key={emp._id} className={depth > 0 ? 'ml-6 sm:ml-10 pl-4 border-l-2 border-primary-100 mt-2' : 'mt-3'}>
+                                        <Link
+                                            to={`/profile/${emp._id}`}
+                                            className="inline-flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-primary-300 hover:shadow-xs transition-all"
+                                        >
+                                            <div className="w-9 h-9 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                {emp.firstName?.[0]}{emp.lastName?.[0]}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900">{emp.firstName} {emp.lastName}</p>
+                                                <p className="text-xs text-gray-500">{emp.designation} • {emp.department}</p>
+                                            </div>
+                                            {reports.length > 0 && (
+                                                <span className="ml-2 px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-[10px] font-bold">
+                                                    {reports.length} direct
+                                                </span>
+                                            )}
+                                        </Link>
+                                        {reports.map(child => renderNode(child, depth + 1))}
+                                    </div>
+                                );
+                            };
+                            return roots.length === 0 ? (
+                                <p className="text-sm text-gray-400 text-center py-8">No employees to display.</p>
+                            ) : (
+                                <div className="space-y-2">{roots.map(root => renderNode(root))}</div>
+                            );
+                        })()}
+                    </div>
+                ) : (
+                    /* Table */
+                    <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
                             <tr>
@@ -349,6 +412,7 @@ const EmployeesPage = () => {
                                 <th className="px-6 py-4">Employee ID</th>
                                 <th className="px-6 py-4">Department</th>
                                 <th className="px-6 py-4">Designation</th>
+                                <th className="px-6 py-4">Earned Leave (EL)</th>
                                 <th className="px-6 py-4">Status</th>
                                 {canManage && <th className="px-6 py-4">Actions</th>}
                             </tr>
@@ -357,14 +421,14 @@ const EmployeesPage = () => {
                             {loading ? (
                                 [1, 2, 3, 4, 5].map(i => (
                                     <tr key={i} className="animate-pulse">
-                                        <td colSpan={canManage ? 6 : 5} className="px-6 py-8">
+                                        <td colSpan={canManage ? 7 : 6} className="px-6 py-8">
                                             <div className="h-4 bg-gray-100 rounded w-full"></div>
                                         </td>
                                     </tr>
                                 ))
                             ) : filteredEmployees.length === 0 ? (
                                 <tr>
-                                    <td colSpan={canManage ? 6 : 5} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={canManage ? 7 : 6} className="px-6 py-12 text-center text-gray-500">
                                         No employees found matching your search.
                                     </td>
                                 </tr>
@@ -385,6 +449,14 @@ const EmployeesPage = () => {
                                         <td className="px-6 py-4 font-mono text-sm text-gray-600">{emp.employeeId}</td>
                                         <td className="px-6 py-4 text-sm text-gray-700">{emp.department}</td>
                                         <td className="px-6 py-4 text-sm text-gray-700">{emp.designation}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-xs font-bold text-purple-700">
+                                                {emp.leaveBalances?.earned ?? 0} EL
+                                            </div>
+                                            <div className="text-[11px] text-gray-500">
+                                                {emp.earnedLeaveProgress?.consecutiveWorkingDays ?? 0}/20 working days
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${emp.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
                                                 }`}>
@@ -423,7 +495,8 @@ const EmployeesPage = () => {
                             )}
                         </tbody>
                     </table>
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Add/Edit Modal */}

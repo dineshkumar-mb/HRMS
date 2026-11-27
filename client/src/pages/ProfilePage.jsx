@@ -18,7 +18,9 @@ import {
     Save,
     X,
     Trash2,
-    Smartphone
+    Smartphone,
+    Upload,
+    Download
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/useAuthStore';
@@ -42,9 +44,16 @@ const ProfilePage = () => {
     // 2FA State
     const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
     const [qrCode, setQrCode] = useState('');
+    const [twoFactorSecret, setTwoFactorSecret] = useState('');
     const [twoFactorCode, setTwoFactorCode] = useState('');
     const [twoFactorLoading, setTwoFactorLoading] = useState(false);
     const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
+
+    // Document Vault State
+    const [docName, setDocName] = useState('');
+    const [docType, setDocType] = useState('Offer Letter');
+    const [docUrl, setDocUrl] = useState('');
+    const [docLoading, setDocLoading] = useState(false);
 
     const isAdmin = ['admin', 'hr'].includes(authUser?.role);
     const authEmpId = typeof authUser?.employee === 'object' ? authUser?.employee?._id : authUser?.employee;
@@ -112,6 +121,7 @@ const ProfilePage = () => {
             setTwoFactorLoading(true);
             const { data } = await api.post('/auth/2fa/generate');
             setQrCode(data.qrCode);
+            setTwoFactorSecret(data.secret || '');
             setShowTwoFactorModal(true);
         } catch {
             toast.error('Failed to generate 2FA secret');
@@ -233,6 +243,53 @@ const ProfilePage = () => {
         reader.readAsDataURL(file);
     };
 
+    const handleDocFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('Document must be smaller than 2MB');
+            return;
+        }
+        if (!docName) setDocName(file.name);
+        const reader = new FileReader();
+        reader.onloadend = () => setDocUrl(reader.result);
+        reader.readAsDataURL(file);
+    };
+
+    const handleAddDocument = async (e) => {
+        e.preventDefault();
+        if (!docName || !docUrl) {
+            toast.error('Provide a document name and file or URL');
+            return;
+        }
+        try {
+            setDocLoading(true);
+            await api.post(`/employees/${profile.employee._id}/documents`, {
+                name: docName,
+                type: docType,
+                url: docUrl
+            });
+            toast.success('Document added');
+            setDocName('');
+            setDocUrl('');
+            fetchProfile();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to add document');
+        } finally {
+            setDocLoading(false);
+        }
+    };
+
+    const handleDeleteDocument = async (docId) => {
+        try {
+            await api.delete(`/employees/${profile.employee._id}/documents/${docId}`);
+            toast.success('Document removed');
+            fetchProfile();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to remove document');
+        }
+    };
+
     if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-primary-600" size={40} /></div>;
 
     const employee = profile?.employee;
@@ -314,7 +371,7 @@ const ProfilePage = () => {
                             onChange={handlePhotoUpload}
                             className="hidden"
                         />
-                        {(isAdmin || authUser?.role === 'manager') && (
+                        {(isOwnProfile || isAdmin || authUser?.role === 'manager') && (
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
@@ -561,6 +618,102 @@ const ProfilePage = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Document Vault */}
+                    <div className="bg-white border border-gray-100 shadow-xl rounded-[32px] overflow-hidden">
+                        <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+                            <h3 className="text-xl font-black text-gray-900 flex items-center gap-3">
+                                <FileText size={22} className="text-primary-600" />
+                                Document Vault
+                            </h3>
+                            <span className="text-xs font-bold text-gray-400">{employee?.documents?.length || 0} files</span>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            {(isOwnProfile || isAdmin || authUser?.role === 'manager') && (
+                                <form onSubmit={handleAddDocument} className="grid grid-cols-1 sm:grid-cols-12 gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                    <div className="sm:col-span-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Document title (e.g. Offer Letter)"
+                                            value={docName}
+                                            onChange={(e) => setDocName(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary-500"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-3">
+                                        <select
+                                            value={docType}
+                                            onChange={(e) => setDocType(e.target.value)}
+                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary-500"
+                                        >
+                                            <option value="Offer Letter">Offer Letter</option>
+                                            <option value="ID Proof">ID Proof</option>
+                                            <option value="Tax Form">Tax Form</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div className="sm:col-span-3">
+                                        <label className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer truncate">
+                                            <Upload size={14} />
+                                            <span>{docUrl ? 'File Ready' : 'Choose File'}</span>
+                                            <input type="file" onChange={handleDocFileChange} className="hidden" />
+                                        </label>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <button
+                                            type="submit"
+                                            disabled={docLoading}
+                                            className="w-full py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                                        >
+                                            {docLoading ? 'Saving...' : 'Upload'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {!employee?.documents || employee.documents.length === 0 ? (
+                                <p className="text-sm text-gray-400 text-center py-4">No documents uploaded yet.</p>
+                            ) : (
+                                <div className="space-y-2.5">
+                                    {employee.documents.map((doc) => (
+                                        <div key={doc._id} className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-9 h-9 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
+                                                    <FileText size={17} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-gray-900 truncate">{doc.name}</p>
+                                                    <p className="text-[11px] font-semibold text-gray-400 uppercase">{doc.type}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <a
+                                                    href={doc.url}
+                                                    download={doc.name}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="p-2 text-primary-600 hover:bg-primary-50 rounded-xl transition-colors"
+                                                    aria-label={`Download ${doc.name}`}
+                                                >
+                                                    <Download size={16} />
+                                                </a>
+                                                {(isOwnProfile || isAdmin || authUser?.role === 'manager') && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteDocument(doc._id)}
+                                                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                                        aria-label={`Delete ${doc.name}`}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
             {/* Change Password Modal */}
@@ -660,6 +813,14 @@ const ProfilePage = () => {
                                     <p className="text-xs text-gray-500 max-w-xs mx-auto">
                                         Open Google Authenticator or Authy on your phone and scan the code above.
                                     </p>
+                                    {twoFactorSecret && (
+                                        <div className="pt-1">
+                                            <p className="text-[11px] text-gray-400">Or enter key manually:</p>
+                                            <code className="inline-block mt-1 px-3 py-1 bg-gray-100 text-gray-800 rounded-lg font-mono text-xs select-all">
+                                                {twoFactorSecret}
+                                            </code>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

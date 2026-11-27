@@ -84,6 +84,26 @@ const updateEmployee = async (req, res, next) => {
             return next(new Error('Employee not found'));
         }
 
+        const isPrivileged = ['admin', 'hr', 'manager'].includes(req.user.role);
+        const isOwnEmployee = req.user.employee && req.user.employee.toString() === req.params.id;
+        if (!isPrivileged) {
+            if (!isOwnEmployee) {
+                res.status(403);
+                return next(new Error('Not authorized to update this employee'));
+            }
+            // Regular employees may only update their own profile photo
+            if (req.body.profilePhoto === undefined) {
+                res.status(403);
+                return next(new Error('Not authorized to update employee details'));
+            }
+            employee = await Employee.findByIdAndUpdate(
+                req.params.id,
+                { profilePhoto: req.body.profilePhoto },
+                { new: true, runValidators: true }
+            );
+            return res.json({ success: true, data: employee });
+        }
+
         const oldEmail = employee.email;
         const { email, role, ...updateData } = req.body;
 
@@ -222,11 +242,73 @@ const deleteEmployee = async (req, res, next) => {
     }
 };
 
+// @desc    Add document to employee
+// @route   POST /api/employees/:id/documents
+// @access  Private (Admin/HR/Manager or self)
+const addEmployeeDocument = async (req, res, next) => {
+    try {
+        const isPrivileged = ['admin', 'hr', 'manager'].includes(req.user.role);
+        const isOwn = req.user.employee && req.user.employee.toString() === req.params.id;
+        if (!isPrivileged && !isOwn) {
+            res.status(403);
+            return next(new Error('Not authorized to add documents for this employee'));
+        }
+
+        const { name, url, type } = req.body;
+        if (!name || !url) {
+            res.status(400);
+            return next(new Error('Document name and file/URL are required'));
+        }
+
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) {
+            res.status(404);
+            return next(new Error('Employee not found'));
+        }
+
+        employee.documents.push({ name, url, type: type || 'other' });
+        await employee.save();
+
+        res.status(201).json({ success: true, data: employee.documents });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Delete document from employee
+// @route   DELETE /api/employees/:id/documents/:docId
+// @access  Private (Admin/HR/Manager or self)
+const deleteEmployeeDocument = async (req, res, next) => {
+    try {
+        const isPrivileged = ['admin', 'hr', 'manager'].includes(req.user.role);
+        const isOwn = req.user.employee && req.user.employee.toString() === req.params.id;
+        if (!isPrivileged && !isOwn) {
+            res.status(403);
+            return next(new Error('Not authorized to delete documents for this employee'));
+        }
+
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) {
+            res.status(404);
+            return next(new Error('Employee not found'));
+        }
+
+        employee.documents = employee.documents.filter(d => d._id.toString() !== req.params.docId);
+        await employee.save();
+
+        res.json({ success: true, data: employee.documents });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getEmployees,
     getEmployeeById,
     createEmployee,
     updateEmployee,
     deleteEmployee,
-    getDashboardHighlights
+    getDashboardHighlights,
+    addEmployeeDocument,
+    deleteEmployeeDocument
 };

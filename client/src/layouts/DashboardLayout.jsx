@@ -80,6 +80,23 @@ const DashboardLayout = () => {
         }
     };
 
+    const getNotificationTarget = (n) => {
+        const text = `${n.title || ''} ${n.message || ''}`.toLowerCase();
+        if (text.includes('leave')) return '/leaves';
+        if (text.includes('regularization')) return isAdminOrHR ? '/attendance-management/manage-requests' : '/attendance-management/log';
+        if (text.includes('assessment')) return '/assessments';
+        if (text.includes('payroll') || text.includes('salary') || text.includes('payslip')) return '/payroll';
+        return null;
+    };
+
+    const handleNotificationClick = async (n) => {
+        if (!n.read) await markAsRead(n._id);
+        const target = getNotificationTarget(n);
+        if (target) {
+            setShowNotifications(false);
+            navigate(target);
+        }
+    };
     const markAllAsRead = async () => {
         try {
             await api.put('/notifications/read-all');
@@ -126,6 +143,7 @@ const DashboardLayout = () => {
             ]
         },
         { name: 'Leave Management', icon: CalendarDays, path: '/leaves' },
+        { name: 'Holidays', icon: CalendarCheck, path: '/holidays' },
         {
             name: 'Assessments',
             icon: ClipboardCheck,
@@ -165,6 +183,7 @@ const DashboardLayout = () => {
         if (path === '/attendance-management/manage-requests') return 'Attendance Requests';
         if (path === '/attendance-management/report') return 'Attendance Report';
         if (path.startsWith('/leaves')) return 'Leave Management';
+        if (path.startsWith('/holidays')) return 'Holiday Manager';
         if (path.startsWith('/assessments')) return 'Self-Assessment';
         if (path.startsWith('/payroll')) return 'Salary & Payroll';
         if (path.startsWith('/reports')) return 'Reports & Analytics';
@@ -425,7 +444,7 @@ const DashboardLayout = () => {
                                                         >
                                                             <button
                                                                 type="button"
-                                                                onClick={() => markAsRead(n._id)}
+                                                                onClick={() => handleNotificationClick(n)}
                                                                 className="flex gap-3 flex-1 min-w-0 text-left"
                                                             >
                                                                 <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.type === 'success' ? 'bg-green-50 text-green-600' :

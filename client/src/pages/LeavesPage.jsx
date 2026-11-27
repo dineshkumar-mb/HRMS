@@ -22,8 +22,20 @@ const LeavesPage = () => {
     const [leaves, setLeaves] = useState([]);
     const [loading, setLoading] = useState(true);
     const [btnLoading, setBtnLoading] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    const { register, handleSubmit, reset, formState: { errors } } = useForm();
+    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm();
+    const watchLeaveType = watch('leaveType');
+    const watchStartDate = watch('startDate');
+    const watchEndDate = watch('endDate');
+
+    const calculatedDays = (() => {
+        if (!watchStartDate || !watchEndDate) return 0;
+        const start = new Date(watchStartDate);
+        const end = new Date(watchEndDate);
+        if (end < start) return -1;
+        return Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    })();
 
     const canApprove = user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager';
 
@@ -44,6 +56,10 @@ const LeavesPage = () => {
     };
 
     const onSubmit = async (data) => {
+        if (new Date(data.endDate) < new Date(data.startDate)) {
+            toast.error('End date cannot be earlier than start date');
+            return;
+        }
         setBtnLoading(true);
         try {
             await api.post('/leave', data);
@@ -58,12 +74,27 @@ const LeavesPage = () => {
         }
     };
 
-    const handleApprove = async (leaveId) => {
+    const handleApprove = async (leave) => {
+        const leaveId = leave._id;
+        const start = new Date(leave.startDate);
+        const end = new Date(leave.endDate);
+        const dept = leave.employee?.department;
+
+        const overlapping = leaves.filter((other) => {
+            if (other._id === leaveId || other.status !== 'approved') return false;
+            if (dept && other.employee?.department !== dept) return false;
+            return new Date(other.startDate) <= end && new Date(other.endDate) >= start;
+        });
+
+        const overlapWarning = overlapping.length > 0
+            ? ` Warning: ${overlapping.map(o => `${o.employee?.firstName} ${o.employee?.lastName}`).join(', ')} in ${dept || 'this team'} already has approved leave during these dates.`
+            : '';
+
         const confirmed = await confirmAction({
             title: 'Approve Leave',
-            message: 'Are you sure you want to approve this leave request?',
+            message: `Are you sure you want to approve this leave request?${overlapWarning}`,
             confirmText: 'Approve',
-            variant: 'primary'
+            variant: overlapping.length > 0 ? 'danger' : 'primary'
         });
         if (!confirmed) return;
 
@@ -169,6 +200,26 @@ const LeavesPage = () => {
                             </div>
                         ))}
                     </div>
+                    <div className="mt-4 p-4 rounded-xl bg-purple-50/70 border border-purple-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-bold text-purple-900">Earned Leave (EL) Auto-Generation Progress</p>
+                            <p className="text-[11px] text-purple-700 mt-0.5">
+                                +1 EL is credited automatically after 20 consecutive working days without taking leave.
+                            </p>
+                        </div>
+                        <div className="sm:w-56 shrink-0">
+                            <div className="flex justify-between text-xs font-bold text-purple-900 mb-1">
+                                <span>{user?.employee?.earnedLeaveProgress?.consecutiveWorkingDays || 0} / 20 days</span>
+                                <span>+{user?.employee?.earnedLeaveProgress?.totalElEarned || 0} earned</span>
+                            </div>
+                            <div className="h-2 bg-purple-200 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-purple-600 rounded-full transition-all"
+                                    style={{ width: `${Math.min(100, ((user?.employee?.earnedLeaveProgress?.consecutiveWorkingDays || 0) / 20) * 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -228,6 +279,26 @@ const LeavesPage = () => {
                             </div>
                         </div>
 
+                        {watchStartDate && watchEndDate && (
+                            <div className={`p-3.5 rounded-xl border text-xs font-semibold flex flex-wrap items-center justify-between gap-2 ${calculatedDays < 0
+                                ? 'bg-red-50 border-red-200 text-red-700'
+                                : 'bg-primary-50/70 border-primary-100 text-primary-800'
+                                }`}>
+                                {calculatedDays < 0 ? (
+                                    <span>End date must be on or after the start date.</span>
+                                ) : (
+                                    <>
+                                        <span>Requested Duration: <strong>{calculatedDays} {calculatedDays === 1 ? 'day' : 'days'}</strong></span>
+                                        {watchLeaveType && (
+                                            <span>
+                                                Available Balance: <strong>{parseFloat(balances[watchLeaveType] || 0).toFixed(2)} days</strong>
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <label className="block text-sm font-bold text-gray-700">Reason <span className="text-red-500">*</span></label>
                             <textarea
@@ -253,12 +324,27 @@ const LeavesPage = () => {
 
             {/* Requests Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                    <h3 className="font-bold text-gray-800 text-lg">
-                        {canApprove ? 'Manage All Leave Requests' : 'Your Leave Requests History'}
-                    </h3>
-                    <div className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">
-                        {leaves.length} Total Records
+                <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gray-50">
+                    <div>
+                        <h3 className="font-bold text-gray-800 text-lg">
+                            {canApprove ? 'Manage All Leave Requests' : 'Your Leave Requests History'}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">{leaves.length} Total Records</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {['all', 'pending', 'approved', 'rejected', 'cancelled'].map((status) => (
+                            <button
+                                key={status}
+                                type="button"
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${statusFilter === status
+                                    ? 'bg-primary-600 text-white shadow-xs'
+                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                                    }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
                     </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -277,10 +363,10 @@ const LeavesPage = () => {
                         <tbody className="divide-y divide-gray-100">
                             {loading ? (
                                 <tr><td colSpan={canApprove ? 7 : 6} className="px-6 py-12"><Loader2 className="animate-spin text-primary-600 mx-auto" size={32} /></td></tr>
-                            ) : leaves.length === 0 ? (
-                                <tr><td colSpan={canApprove ? 7 : 6} className="px-6 py-16 text-center text-gray-400 font-medium">No leave requests found in history.</td></tr>
+                            ) : leaves.filter(l => statusFilter === 'all' || l.status === statusFilter).length === 0 ? (
+                                <tr><td colSpan={canApprove ? 7 : 6} className="px-6 py-16 text-center text-gray-400 font-medium">No leave requests found for this filter.</td></tr>
                             ) : (
-                                leaves.map((leave) => (
+                                leaves.filter(l => statusFilter === 'all' || l.status === statusFilter).map((leave) => (
                                     <tr key={leave._id} className="text-sm hover:bg-gray-50/80 transition-colors">
                                         {canApprove && (
                                             <td className="px-6 py-4">
@@ -334,7 +420,7 @@ const LeavesPage = () => {
                                                         <>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleApprove(leave._id)}
+                                                                onClick={() => handleApprove(leave)}
                                                                 disabled={btnLoading}
                                                                 className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all shadow-sm"
                                                                 title="Approve"

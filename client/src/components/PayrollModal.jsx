@@ -4,13 +4,12 @@ import { jsPDF } from 'jspdf';
 import {
     X,
     Download,
-    Building2,
-    CreditCard,
     ReceiptIndianRupee,
     TrendingDown,
     TrendingUp,
     Shield,
-    Loader2
+    Loader2,
+    Printer
 } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 import { toast } from '../store/useUIStore';
@@ -203,13 +202,13 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div ref={slipRef} className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div ref={slipRef} className="payslip-print-root bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-zoom-in">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-primary-600 to-indigo-600 p-8 text-white relative">
+                <div className="bg-gradient-to-r from-primary-600 to-indigo-600 p-6 sm:p-8 text-white relative">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/20 transition-colors"
+                        className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/20 transition-colors print-hidden"
                         aria-label="Close salary slip"
                         data-html2canvas-ignore
                     >
@@ -226,17 +225,24 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
                     </div>
                 </div>
 
-                <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
+                <div className="payslip-print-body p-6 sm:p-8 space-y-6 sm:space-y-8 max-h-[70vh] overflow-y-auto">
                     {/* Status Badge */}
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap justify-between items-center gap-2">
                         <div className="flex items-center gap-2 text-gray-500">
                             <Shield size={16} />
                             <span className="text-sm font-medium uppercase tracking-wider">Payroll Status</span>
                         </div>
-                        <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase ${status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-primary-100 text-primary-700'
-                            }`}>
-                            {status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            {status === 'paid' && payroll.paidAt && (
+                                <span className="text-xs font-medium text-gray-500">
+                                    Paid on {new Date(payroll.paidAt).toLocaleDateString()}
+                                </span>
+                            )}
+                            <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase ${status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-primary-100 text-primary-700'
+                                }`}>
+                                {status}
+                            </span>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -283,25 +289,35 @@ const PayrollModal = ({ isOpen, onClose, payroll }) => {
                     </div>
 
                     {/* Net Salary Footer */}
-                    <div className="bg-gray-50 rounded-3xl p-8 flex flex-col md:flex-row justify-between items-center gap-6 border border-gray-100">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-primary-600 p-4 rounded-2xl text-white shadow-lg shadow-primary-200">
-                                <CreditCard size={28} />
+                    <div className="bg-gray-50 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-gray-100">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl bg-primary-50 border-2 border-primary-600 text-primary-700 flex items-center justify-center shrink-0 font-black text-xl shadow-xs">
+                                H
                             </div>
-                            <div>
-                                <p className="text-gray-500 text-sm font-medium">Net Take Home Salary</p>
+                            <div className="min-w-0">
+                                <p className="text-gray-500 text-xs font-semibold whitespace-nowrap">Net Take Home Salary</p>
                                 <h4 className="text-2xl font-bold text-gray-900">₹{netSalary.toLocaleString()}</h4>
                             </div>
                         </div>
-                        <button
-                            onClick={handleDownload}
-                            disabled={downloading}
-                            className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-primary-600 text-primary-600 font-bold rounded-2xl hover:bg-primary-600 hover:text-white transition-all shadow-sm disabled:opacity-50"
-                            data-html2canvas-ignore
-                        >
-                            {downloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
-                            {downloading ? 'Generating...' : 'Download PDF'}
-                        </button>
+                        <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0 print-hidden" data-html2canvas-ignore>
+                            <button
+                                type="button"
+                                onClick={() => window.print()}
+                                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-100 transition-all whitespace-nowrap"
+                            >
+                                <Printer size={16} />
+                                Print
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDownload}
+                                disabled={downloading}
+                                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white text-sm font-bold rounded-xl hover:bg-primary-700 transition-all shadow-sm disabled:opacity-50 whitespace-nowrap"
+                            >
+                                {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                                {downloading ? 'Generating...' : 'Download PDF'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

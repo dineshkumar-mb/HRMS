@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
     Users,
-    Calendar,
     Download,
     RefreshCcw,
     CheckCircle,
@@ -9,7 +8,10 @@ import {
     Search,
     ChevronLeft,
     ChevronRight,
-    Loader2
+    Loader2,
+    CheckCheck,
+    SlidersHorizontal,
+    X
 } from 'lucide-react';
 import api from '../services/api';
 import { toast, confirmAction } from '../store/useUIStore';
@@ -17,8 +19,11 @@ import { toast, confirmAction } from '../store/useUIStore';
 const AdminPayrollView = ({ onOpenSlip }) => {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+    const [markingPaid, setMarkingPaid] = useState(false);
     const [payrollData, setPayrollData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [editingPay, setEditingPay] = useState(null);
+    const [adjustForm, setAdjustForm] = useState({ allowances: 0, deductions: 0 });
     const [date, setDate] = useState({
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear()
@@ -92,6 +97,58 @@ const AdminPayrollView = ({ onOpenSlip }) => {
         toast.success('Payroll exported to CSV');
     };
 
+    const handleMarkAllPaid = async () => {
+        const confirmed = await confirmAction({
+            title: 'Mark All as Paid',
+            message: `Mark all processed payroll slips for ${months[date.month - 1]} ${date.year} as Paid?`,
+            confirmText: 'Mark All Paid',
+            variant: 'primary'
+        });
+        if (!confirmed) return;
+
+        try {
+            setMarkingPaid(true);
+            const { data } = await api.post('/payroll/mark-paid', { month: date.month, year: date.year });
+            toast.success(`Marked ${data.modifiedCount} payroll record(s) as Paid`);
+            fetchAllPayroll();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to mark payroll as paid');
+        } finally {
+            setMarkingPaid(false);
+        }
+    };
+
+    const handleMarkOnePaid = async (payId) => {
+        try {
+            await api.put(`/payroll/${payId}`, { status: 'paid' });
+            toast.success('Marked as Paid');
+            fetchAllPayroll();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Update failed');
+        }
+    };
+
+    const openAdjustModal = (pay) => {
+        setEditingPay(pay);
+        setAdjustForm({
+            allowances: pay.salaryComponents?.allowances || 0,
+            deductions: pay.salaryComponents?.deductions || 0
+        });
+    };
+
+    const handleSaveAdjustment = async (e) => {
+        e.preventDefault();
+        if (!editingPay) return;
+        try {
+            await api.put(`/payroll/${editingPay._id}`, adjustForm);
+            toast.success('Payroll components adjusted');
+            setEditingPay(null);
+            fetchAllPayroll();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to adjust payroll');
+        }
+    };
+
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     const filteredData = payrollData.filter(pay =>
@@ -144,15 +201,26 @@ const AdminPayrollView = ({ onOpenSlip }) => {
                         type="button"
                         onClick={handleGenerate}
                         disabled={generating}
-                        className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-3 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 disabled:opacity-50 text-sm"
                     >
                         {generating ? <Loader2 className="animate-spin" size={18} /> : <RefreshCcw size={18} />}
                         Process Payroll
                     </button>
+                    {filteredData.some(p => p.status !== 'paid') && (
+                        <button
+                            type="button"
+                            onClick={handleMarkAllPaid}
+                            disabled={markingPaid}
+                            className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-sm disabled:opacity-50 text-sm"
+                        >
+                            {markingPaid ? <Loader2 className="animate-spin" size={18} /> : <CheckCheck size={18} />}
+                            Mark All Paid
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={handleExportAll}
-                        className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 transition-all shadow-sm"
+                        className="flex items-center gap-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 transition-all shadow-sm text-sm"
                     >
                         <Download size={18} />
                         Export All
@@ -249,12 +317,33 @@ const AdminPayrollView = ({ onOpenSlip }) => {
                                             <p className="text-sm font-black text-gray-900 font-mono tracking-tight">₹{pay.netSalary.toLocaleString()}</p>
                                         </td>
                                         <td className="px-8 py-4 text-center">
-                                            <button
-                                                onClick={() => onOpenSlip(pay)}
-                                                className="px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-xl text-xs font-black uppercase tracking-wider transition-all"
-                                            >
-                                                View Details
-                                            </button>
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openAdjustModal(pay)}
+                                                    className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                                                    title="Adjust Allowances / Deductions"
+                                                    aria-label={`Adjust payroll for ${pay.employee.firstName}`}
+                                                >
+                                                    <SlidersHorizontal size={15} />
+                                                </button>
+                                                {pay.status !== 'paid' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleMarkOnePaid(pay._id)}
+                                                        className="px-3 py-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all"
+                                                    >
+                                                        Mark Paid
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onOpenSlip(pay)}
+                                                    className="px-3 py-1.5 text-primary-600 hover:bg-primary-50 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all"
+                                                >
+                                                    View Slip
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -263,6 +352,55 @@ const AdminPayrollView = ({ onOpenSlip }) => {
                     </table>
                 </div>
             </div>
+
+            {/* Adjustment Modal */}
+            {editingPay && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in" role="dialog" aria-modal="true">
+                    <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl animate-zoom-in">
+                        <div className="flex justify-between items-center mb-5">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900">Adjust Payroll</h3>
+                                <p className="text-xs text-slate-500">{editingPay.employee.firstName} {editingPay.employee.lastName}</p>
+                            </div>
+                            <button type="button" onClick={() => setEditingPay(null)} className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400" aria-label="Close adjustment modal">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveAdjustment} className="space-y-4">
+                            <div>
+                                <label htmlFor="adj-allowances" className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Allowances / Bonus (₹)</label>
+                                <input
+                                    id="adj-allowances"
+                                    type="number"
+                                    min="0"
+                                    value={adjustForm.allowances}
+                                    onChange={(e) => setAdjustForm(prev => ({ ...prev, allowances: e.target.value }))}
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="adj-deductions" className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Other Deductions (₹)</label>
+                                <input
+                                    id="adj-deductions"
+                                    type="number"
+                                    min="0"
+                                    value={adjustForm.deductions}
+                                    onChange={(e) => setAdjustForm(prev => ({ ...prev, deductions: e.target.value }))}
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button type="button" onClick={() => setEditingPay(null)} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">
+                                    Cancel
+                                </button>
+                                <button type="submit" className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl">
+                                    Save &amp; Recalculate
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

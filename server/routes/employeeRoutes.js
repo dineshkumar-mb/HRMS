@@ -6,7 +6,9 @@ const {
     createEmployee,
     updateEmployee,
     deleteEmployee,
-    getDashboardHighlights
+    getDashboardHighlights,
+    addEmployeeDocument,
+    deleteEmployeeDocument
 } = require('../controllers/employeeController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
@@ -20,7 +22,10 @@ router.route('/')
 
 router.route('/:id')
     .get(getEmployeeById)
-    .put(authorize('admin', 'hr', 'manager'), updateEmployee)
+    .put(updateEmployee)
     .delete(authorize('admin'), deleteEmployee);
+
+router.post('/:id/documents', addEmployeeDocument);
+router.delete('/:id/documents/:docId', deleteEmployeeDocument);
 
 module.exports = router;

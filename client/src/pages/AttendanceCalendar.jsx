@@ -5,6 +5,7 @@ import api from '../services/api';
 const AttendanceCalendar = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [attendanceData, setAttendanceData] = useState([]);
+    const [holidays, setHolidays] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -14,8 +15,12 @@ const AttendanceCalendar = () => {
     const fetchMonthlyAttendance = async () => {
         try {
             setLoading(true);
-            const { data } = await api.get('/attendance/me');
-            setAttendanceData(data.data);
+            const [attRes, holRes] = await Promise.all([
+                api.get('/attendance/me'),
+                api.get('/holidays')
+            ]);
+            setAttendanceData(attRes.data.data || []);
+            setHolidays(holRes.data.data || []);
         } catch (error) {
             console.error('Error fetching calendar data:', error);
         } finally {
@@ -45,6 +50,7 @@ const AttendanceCalendar = () => {
                 const localDate = new Date(r.date).toLocaleDateString('en-CA');
                 return localDate === dateStr;
             });
+            const holiday = holidays.find(h => new Date(h.date).toLocaleDateString('en-CA') === dateStr);
             const dayOfWeek = new Date(year, month, d).getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const isToday = dateStr === todayStr;
@@ -53,6 +59,7 @@ const AttendanceCalendar = () => {
                 <div
                     key={d}
                     className={`h-32 border border-slate-100 p-2.5 text-xs relative flex flex-col justify-between transition-colors ${isToday ? 'bg-primary-50/40 ring-1 ring-inset ring-primary-300' :
+                        holiday ? 'bg-blue-50/35' :
                         isWeekend ? 'bg-amber-50/25' : 'bg-white'
                         }`}
                 >
@@ -60,9 +67,19 @@ const AttendanceCalendar = () => {
                         <span className={`font-bold px-1.5 py-0.5 rounded-md ${isToday ? 'bg-primary-600 text-white' : 'text-slate-700'}`}>
                             {d}
                         </span>
-                        {isWeekend && (
-                            <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">WO</span>
-                        )}
+                        <div className="flex items-center gap-1">
+                            {holiday && (
+                                <span
+                                    title={holiday.name}
+                                    className="text-[10px] font-bold bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded truncate max-w-[64px]"
+                                >
+                                    {holiday.name}
+                                </span>
+                            )}
+                            {isWeekend && !holiday && (
+                                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">WO</span>
+                            )}
+                        </div>
                     </div>
 
                     {record?.checkIn && (
@@ -161,6 +178,7 @@ const AttendanceCalendar = () => {
                     <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg">Half Day (P/2)</span>
                     <span className="bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-lg">Absent (A)</span>
                     <span className="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg">Weekly Off (WO)</span>
+                    <span className="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg">Holiday (H)</span>
                 </div>
             </div>
         </div>

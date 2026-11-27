@@ -26,10 +26,26 @@ const ChangePasswordPage = () => {
         register,
         handleSubmit,
         reset,
+        watch,
         formState: { errors },
     } = useForm({
         resolver: zodResolver(changePasswordSchema),
     });
+
+    const newPwd = watch('newPassword', '');
+    const getPasswordStrength = (pwd) => {
+        if (!pwd) return { score: 0, label: '', color: 'bg-gray-200', text: 'text-gray-400' };
+        let score = 0;
+        if (pwd.length >= 6) score++;
+        if (pwd.length >= 10) score++;
+        if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score++;
+        if (/[^A-Za-z0-9]/.test(pwd)) score++;
+        if (score <= 1) return { score: 1, label: 'Weak', color: 'bg-red-500', text: 'text-red-600' };
+        if (score === 2) return { score: 2, label: 'Fair', color: 'bg-amber-500', text: 'text-amber-600' };
+        if (score === 3) return { score: 3, label: 'Good', color: 'bg-blue-500', text: 'text-blue-600' };
+        return { score: 4, label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-600' };
+    };
+    const strength = getPasswordStrength(newPwd);
 
     const togglePasswordVisibility = (field) => {
         setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
@@ -133,6 +149,19 @@ const ChangePasswordPage = () => {
                                 </button>
                             </div>
                             {errors.newPassword && <p className="mt-2 text-xs font-semibold text-red-500 ml-1">{errors.newPassword.message}</p>}
+                            {newPwd && (
+                                <div className="mt-2.5 px-1 space-y-1">
+                                    <div className="grid grid-cols-4 gap-1.5">
+                                        {[1, 2, 3, 4].map((level) => (
+                                            <div
+                                                key={level}
+                                                className={`h-1.5 rounded-full transition-colors ${strength.score >= level ? strength.color : 'bg-gray-200'}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className={`text-[11px] font-bold ${strength.text}`}>Strength: {strength.label}</p>
+                                </div>
+                            )}
                             <p className="mt-2 text-[10px] text-gray-400 font-medium px-1">At least 6 characters including letters and numbers.</p>
                         </div>
 

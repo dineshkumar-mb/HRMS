@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Search, Loader2 } from 'lucide-react';
+import { MapPin, Search, Loader2, Clock } from 'lucide-react';
 import api from '../services/api';
 
 const MyAttendanceLog = () => {
     const [loading, setLoading] = useState(true);
     const [attendance, setAttendance] = useState([]);
+    const [permissions, setPermissions] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -14,8 +15,12 @@ const MyAttendanceLog = () => {
     const fetchMyAttendance = async () => {
         try {
             setLoading(true);
-            const { data } = await api.get('/attendance/me');
-            setAttendance(data.data);
+            const [attRes, permRes] = await Promise.all([
+                api.get('/attendance/me'),
+                api.get('/permissions/me')
+            ]);
+            setAttendance(attRes.data.data || []);
+            setPermissions(permRes.data.data || []);
         } catch (error) {
             console.error('Error fetching attendance:', error);
         } finally {
@@ -39,7 +44,7 @@ const MyAttendanceLog = () => {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Attendance Log</h1>
-                <p className="text-sm text-slate-500 mt-0.5">Detailed history of your daily check-in and check-out punches.</p>
+                <p className="text-sm text-slate-500 mt-0.5">Detailed history of your daily check-in, check-out, and 2-hour permission requests.</p>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -112,6 +117,58 @@ const MyAttendanceLog = () => {
                                                     'bg-red-50 text-red-700 border border-red-100'
                                                 }`}>
                                                 {log.status === 'P/2' ? 'Half Day' : log.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* My 2-Hour Permission Requests */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                    <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <Clock size={16} className="text-primary-600" />
+                        My Permission Requests (2 Hours)
+                    </h2>
+                    <span className="text-xs font-semibold text-slate-500">{permissions.length} total</span>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Time Slot</th>
+                                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Reason</th>
+                                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {permissions.length === 0 ? (
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-10 text-center text-slate-400">No permission requests submitted yet</td>
+                                </tr>
+                            ) : (
+                                permissions.map((perm) => (
+                                    <tr key={perm._id} className="hover:bg-slate-50/70 transition-colors">
+                                        <td className="px-6 py-4 font-semibold text-slate-800">
+                                            {new Date(perm.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-600">
+                                            {perm.type === 'morning' ? 'Morning (9:00 AM - 11:00 AM)' : 'Evening (4:30 PM - 6:30 PM)'}
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={perm.reason}>
+                                            {perm.reason}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className={`px-2.5 py-1 rounded-lg font-bold uppercase text-[11px] ${perm.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                                perm.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                    'bg-amber-50 text-amber-700 border border-amber-100'
+                                                }`}>
+                                                {perm.status}
                                             </span>
                                         </td>
                                     </tr>

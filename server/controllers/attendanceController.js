@@ -1,6 +1,9 @@
 const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
 const Holiday = require('../models/Holiday');
+const Leave = require('../models/Leave');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // @desc    Check-in
 // @route   POST /api/attendance/check-in
@@ -72,6 +75,52 @@ const checkIn = async (req, res, next) => {
             },
             status: status
         });
+
+        // Earned Leave (EL) generation: +1 EL for every 20 working days without taking leave
+        const isWorkingDay = day !== 0 && day !== 6 && !isHoliday;
+        if (isWorkingDay) {
+            const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+            const onApprovedLeave = await Leave.findOne({
+                employee: employee._id,
+                status: 'approved',
+                startDate: { $lt: endOfToday },
+                endDate: { $gte: today }
+            });
+
+            if (!employee.earnedLeaveProgress) {
+                employee.earnedLeaveProgress = { consecutiveWorkingDays: 0, totalElEarned: 0 };
+            }
+
+            const alreadyProcessedToday = employee.earnedLeaveProgress.lastProcessedDate &&
+                new Date(employee.earnedLeaveProgress.lastProcessedDate).getTime() === today.getTime();
+
+            if (!onApprovedLeave && !alreadyProcessedToday) {
+                employee.earnedLeaveProgress.consecutiveWorkingDays += 1;
+                employee.earnedLeaveProgress.lastProcessedDate = today;
+
+                if (employee.earnedLeaveProgress.consecutiveWorkingDays >= 20) {
+                    const earnedCount = Math.floor(employee.earnedLeaveProgress.consecutiveWorkingDays / 20);
+                    employee.leaveBalances.earned = (employee.leaveBalances.earned || 0) + earnedCount;
+                    employee.earnedLeaveProgress.consecutiveWorkingDays =
+                        employee.earnedLeaveProgress.consecutiveWorkingDays % 20;
+                    employee.earnedLeaveProgress.totalElEarned =
+                        (employee.earnedLeaveProgress.totalElEarned || 0) + earnedCount;
+                    employee.earnedLeaveProgress.lastEarnedAt = new Date();
+
+                    const linkedUser = await User.findOne({ employee: employee._id });
+                    if (linkedUser) {
+                        await Notification.create({
+                            user: linkedUser._id,
+                            title: 'Earned Leave Credited',
+                            message: `You completed 20 working days without taking leave and earned +${earnedCount} Earned Leave (EL).`,
+                            type: 'success'
+                        });
+                    }
+                }
+
+                await employee.save();
+            }
+        }
 
         res.status(201).json({ success: true, data: attendance });
     } catch (error) {

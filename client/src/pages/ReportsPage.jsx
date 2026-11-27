@@ -11,9 +11,23 @@ import {
     Calendar,
     Loader2,
     BarChart3,
-    PieChart,
+    PieChart as PieChartIcon,
     AlertCircle
 } from 'lucide-react';
+import {
+    ResponsiveContainer,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    AreaChart,
+    Area,
+    CartesianGrid,
+    PieChart,
+    Pie,
+    Cell
+} from 'recharts';
 import api from '../services/api';
 
 const StatCard = ({ title, value, icon, iconBg, iconText, subtitle }) => {
@@ -171,6 +185,97 @@ const ReportsPage = () => {
                     />
                 </div>
             )}
+
+            {/* Visual Analytics Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {attendanceReports && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <TrendingUp size={18} className="text-primary-600" />
+                            <h3 className="text-base font-bold text-gray-900">Daily Attendance Trend</h3>
+                        </div>
+                        <div className="h-56">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                    data={Object.entries(attendanceReports.dailyAttendance || {}).map(([date, count]) => ({
+                                        date: date.slice(5),
+                                        count
+                                    }))}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <Tooltip />
+                                    <Area type="monotone" dataKey="count" stroke="#2563eb" fill="#dbeafe" strokeWidth={2} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {employeeReports && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <BarChart3 size={18} className="text-primary-600" />
+                            <h3 className="text-base font-bold text-gray-900">Headcount by Department</h3>
+                        </div>
+                        <div className="h-56">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={Object.entries(employeeReports.byDepartment || {}).map(([dept, count]) => ({
+                                        dept,
+                                        count
+                                    }))}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <XAxis dataKey="dept" tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <Tooltip />
+                                    <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {leaveReports && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <PieChartIcon size={18} className="text-orange-600" />
+                            <h3 className="text-base font-bold text-gray-900">Leave Status Mix</h3>
+                        </div>
+                        <div className="h-56">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={[
+                                            { name: 'Pending', value: leaveReports.statusBreakdown?.pending || 0, color: '#f59e0b' },
+                                            { name: 'Approved', value: leaveReports.statusBreakdown?.approved || 0, color: '#10b981' },
+                                            { name: 'Rejected', value: leaveReports.statusBreakdown?.rejected || 0, color: '#ef4444' }
+                                        ]}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={45}
+                                        outerRadius={75}
+                                        paddingAngle={3}
+                                    >
+                                        {[
+                                            { color: '#f59e0b' },
+                                            { color: '#10b981' },
+                                            { color: '#ef4444' }
+                                        ].map((entry, idx) => (
+                                            <Cell key={idx} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Employee Reports */}

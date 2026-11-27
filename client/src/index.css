@@ -73,3 +73,62 @@
 .animate-zoom-in {
   animation: zoom-in 0.2s ease-out;
 }
+
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 24s linear infinite;
+}
+
+.marquee-container:hover .animate-marquee,
+.marquee-container:focus-within .animate-marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .payslip-print-root,
+  .payslip-print-root * {
+    visibility: visible !important;
+  }
+
+  .payslip-print-root {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .payslip-print-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .print-hidden,
+  [data-html2canvas-ignore] {
+    display: none !important;
+  }
+}

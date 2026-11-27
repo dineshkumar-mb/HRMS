@@ -46,6 +46,12 @@ const employeeSchema = new mongoose.Schema({
         paternity: { type: Number, default: 15 },
         bereavement: { type: Number, default: 10 }
     },
+    earnedLeaveProgress: {
+        consecutiveWorkingDays: { type: Number, default: 0 },
+        totalElEarned: { type: Number, default: 0 },
+        lastProcessedDate: { type: Date },
+        lastEarnedAt: { type: Date }
+    },
     faceDescriptor: {
         type: [Number],
         default: undefined

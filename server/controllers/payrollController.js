@@ -68,4 +68,57 @@ const getAllPayroll = async (req, res, next) => {
     }
 };
 
-module.exports = { generatePayroll, getMyPayroll, getAllPayroll };
+// @desc    Update single payroll record (adjust components or mark paid)
+// @route   PUT /api/payroll/:id
+// @access  Private (Admin/HR)
+const updatePayroll = async (req, res, next) => {
+    try {
+        const payroll = await Payroll.findById(req.params.id);
+        if (!payroll) {
+            res.status(404);
+            return next(new Error('Payroll record not found'));
+        }
+
+        const { allowances, deductions, status } = req.body;
+        if (allowances !== undefined) payroll.salaryComponents.allowances = Number(allowances);
+        if (deductions !== undefined) payroll.salaryComponents.deductions = Number(deductions);
+
+        const { basic = 0, hra = 0, pf = 0 } = payroll.salaryComponents;
+        const currAllowances = payroll.salaryComponents.allowances || 0;
+        const currDeductions = payroll.salaryComponents.deductions || 0;
+        const tds = (basic + hra + currAllowances) * 0.10;
+        payroll.salaryComponents.tds = tds;
+        payroll.netSalary = (basic + hra + currAllowances) - (currDeductions + pf + tds);
+
+        if (status) {
+            payroll.status = status;
+            if (status === 'paid' && !payroll.paidAt) {
+                payroll.paidAt = new Date();
+            }
+        }
+
+        await payroll.save();
+        const populated = await Payroll.findById(payroll._id).populate('employee', 'firstName lastName department designation dateOfJoining employeeId');
+        res.json({ success: true, data: populated });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Mark all payrolls for a month/year as paid
+// @route   POST /api/payroll/mark-paid
+// @access  Private (Admin/HR)
+const markAllPaid = async (req, res, next) => {
+    try {
+        const { month, year } = req.body;
+        const result = await Payroll.updateMany(
+            { month, year, status: { $ne: 'paid' } },
+            { $set: { status: 'paid', paidAt: new Date() } }
+        );
+        res.json({ success: true, modifiedCount: result.modifiedCount });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { generatePayroll, getMyPayroll, getAllPayroll, updatePayroll, markAllPaid };

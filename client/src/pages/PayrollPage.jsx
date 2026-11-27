@@ -159,10 +159,17 @@ const PayrollPage = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${pay.status === 'paid' ? 'bg-green-50 text-green-700' : 'bg-primary-50 text-primary-700'
-                                                        }`}>
-                                                        {pay.status}
-                                                    </span>
+                                                    <div className="flex flex-col items-start gap-0.5">
+                                                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${pay.status === 'paid' ? 'bg-green-50 text-green-700' : 'bg-primary-50 text-primary-700'
+                                                            }`}>
+                                                            {pay.status}
+                                                        </span>
+                                                        {pay.status === 'paid' && pay.paidAt && (
+                                                            <span className="text-[11px] text-gray-400">
+                                                                Paid {new Date(pay.paidAt).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right font-mono font-bold text-gray-700">
                                                     ₹{pay.netSalary.toLocaleString()}
